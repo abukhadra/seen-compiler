@@ -1,4 +1,4 @@
-*-lock.json
+Cargo.lock
 .DS_Store
 .DS_Store?
-node_modules
+target
