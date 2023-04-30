@@ -5,6 +5,7 @@ use std::{
     path::PathBuf
 };
 
+
 use crate::transl::transl::Transl;
 
 
@@ -32,8 +33,8 @@ pub fn main_path(
 	home: &PathBuf
 ) -> String {
 	let mut main_path = home.clone();
-	main_path.push(transl.proj.src());
-	main_path.push(transl.proj.main());
+	main_path.push(transl.src());
+	main_path.push(transl.main());
 	main_path.set_extension(transl.seen_ext());
 	format!("{}", main_path.display())    
 

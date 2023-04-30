@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::transl::Transl;
+use crate::transl::transl::Transl;
 
 //================
 //   build_path()

@@ -1,6 +1,6 @@
 // FIXME: split translations to multiple files: errors, Transl , messages ...etc
 
-use seen_compiler::lang::Lang;
+use crate::lang::Lang;
 use crate::transl::text::Text;
 
 //================
@@ -30,7 +30,7 @@ pub struct Transl {
 
 }
 
-impl ProjTransl {
+impl Transl {
     //---------------------
     //  new()
     //---------------------     
@@ -52,11 +52,11 @@ impl ProjTransl {
     //--------------------- 
     pub fn to_str(
         &self, 
-        transl: &ProjTransl
+        text: &Text
     ) -> String {
         match self._proj_lang {
-            Lang::Ar => ProjTransl.ar.clone(),
-            Lang::En => ProjTransl.en.clone()
+            Lang::Ar => text.ar.clone(),
+            Lang::En => text.en.clone()
         }
     }
 
