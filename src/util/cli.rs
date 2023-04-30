@@ -25,11 +25,19 @@ use crate::lang::{
 	}
 };
 
-use crate::project::proj_dir;
+use crate::project::{
+	proj_dir,
+	conf,
+	src,
+	build
+};
+
+use crate::transl::transl::Transl;
+
 use crate::tool::cargo::*;
 
 //================
-//   Cli()
+//   Cli
 //================
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -125,8 +133,6 @@ impl New {
 	}
 }
 
-
-
 //================
 //   Init
 //================
@@ -198,11 +204,12 @@ impl Compile {
 			Some(path) => path
 		};
 
-		let lang = proj_lang(&home).expect("");
-		let proj_name = proj_name(&lang, &home);
-		let build_path = build_path(&lang, &home, &proj_name);
+		let lang = conf::proj_lang(&home).expect("");
+		let transl = Transl::new(lang.clone());
+		let proj_name = conf::proj_name(&transl, &home);
+		let build_path = build::build_path(&transl, &home, &proj_name);
 		let out = Some(format!("{}", build_path.display()));
-		let main_path = main_path(&lang, &home);
+		let main_path = src::main_path(&transl, &home);
 		let paths = vec![main_path];
 		if let Err(err) = compiler::compile(lang, &proj_name, out, paths ) {
 			panic!("{}", err);
@@ -243,9 +250,10 @@ impl Build {
 			None => std::env::current_dir().unwrap(),
 			Some(path) => path
 		};
-		let lang = proj_lang(&home).expect("");
-		let proj_name = proj_name(&lang, &home);
-		let build_path = build_path(&lang, &home, &proj_name);
+		let lang = conf::proj_lang(&home).expect("");
+		let transl = Transl::new(lang);
+		let proj_name = conf::proj_name(&transl, &home);
+		let build_path = build::build_path(&transl, &home, &proj_name);
 		let work_dir = format!("{}", build_path.display());
 		Compile::exec(Some(home));
 		Cargo::new().build(&work_dir, redirect)
@@ -271,9 +279,10 @@ impl Run {
 			None => std::env::current_dir().unwrap(),
 			Some(path) => path
 		};
-		let lang = proj_lang(&home).expect("");
-		let proj_name = proj_name(&lang, &home);
-		let build_path = build_path(&lang, &home, &proj_name);
+		let lang = conf::proj_lang(&home).expect("");
+		let transl = Transl::new(lang);
+		let proj_name = conf::proj_name(&transl, &home);
+		let build_path = build::build_path(&transl, &home, &proj_name);
 		let work_dir = format!("{}", build_path.display());
 		Compile::exec(Some(home));
 		Cargo::new().run(&work_dir, redirect)
@@ -329,171 +338,6 @@ impl Editor {
 		panic!()	// TODO Editor is handled in the tauri project, 
 					// remove the main and cli from here, make this a lib only
 					//	handle both cli (clap) and gui from the tauri project
-	}
-}
-
-//================
-//   proj_lang()
-//================
-pub fn proj_lang(home: &PathBuf) -> Result<Lang, String> {
-	if conf_ar(home).exists() {
-		Ok(Lang::Ar)
-	} else if conf_en(home).exists() {
-		Ok(Lang::En)
-	} else {
-		Err("missing conf.seen".to_string())
-	}
-}
-
-//================
-//   conf_ar()
-//================
-pub fn conf_ar(home: &PathBuf) -> PathBuf {
-	let mut conf_ar = home.clone();
-	conf_ar.push("هيئة");
-	conf_ar.set_extension("س");
-	conf_ar
-}
-
-//================
-//   conf_en()
-//================
-pub fn conf_en(home: &PathBuf) -> PathBuf {
-	let mut conf_en = home.clone();
-	conf_en.push("conf");
-	conf_en.set_extension("seen");	
-	conf_en
-}
-
-//================
-//   proj_name_ar()
-//================
-pub fn proj_name_ar(home: &PathBuf) -> String {
-	let conf_ar = conf_ar(&home);
-	// pkg_ar.push("حزمة");				
-	let ast = compiler::to_ast( format!("{}", conf_ar.display()));
-	match ast.get(0).unwrap() {
-		ModElement::MainFn(Fn{block: els,..}) => {
-			match els.get(0).unwrap() {	// assuming that the name is provided in the config file
-				BlockElement::Expr(Expr::StructLiteral(StructLiteral{items})) => {
-					match items.get(0).unwrap() {
-						(t, expr ) => {
-							match (t.to_string().as_str(), expr.as_ref().unwrap()) {
-								("الاسم", Expr::Str(v)) => v.to_string(),
-								x => panic!("{:?}", x)
-							}
-						},
-					}
-				},
-				x => panic!("{:?}", x)
-			}
-		}
-		x => panic!("{:?}", x)
-	}
-}
-
-//================
-//   proj_name_en()
-//================
-pub fn proj_name_en(home: &PathBuf) -> String {
-	let conf_en = conf_en(&home);
-	// conf_en.push("pkg");				
-	let ast = compiler::to_ast( format!("{}", conf_en.display()));
-	match ast.get(0).unwrap() {
-		ModElement::MainFn(Fn{block: els,..}) => {
-			match els.get(0).unwrap() {	// assuming that the name is provided in the config file
-				BlockElement::Expr(Expr::StructLiteral(StructLiteral{items})) => {
-					match items.get(0).unwrap() {
-						(t, expr ) => {
-							match (t.to_string().as_str(), expr.as_ref().unwrap()) {
-								("name", Expr::Str(v)) => v.to_string(),
-								x => panic!("{:?}", x)
-							}
-						}
-					}
-				},
-				x => panic!("{:?}", x)
-			}
-		},
-		x => panic!("{:?}", x)
-	}
-}
-
-//================
-//   proj_name()
-//================
-pub fn proj_name(
-	lang: &Lang,
-	home: &PathBuf
-) -> String {
-	match lang {
-		Lang::Ar => proj_name_ar(&home),
-		Lang::En => proj_name_en(&home)
-	}
-}
-
-//================
-//   build_path()
-//================
-pub fn build_path(
-	lang: &Lang,
-	home: &PathBuf,
-	proj_name: &String
-) -> PathBuf{
-	let mut build = home.clone();
-	build.push(match lang {
-		Lang::Ar => "بنية", 
-		Lang::En => "build"
-	});
-	build.push(proj_name.clone());
-	build
-}
-
-//================
-//   main_path_ar()
-//================
-pub fn main_path_ar(home: &PathBuf) -> String {
-	let mut main_path = home.clone();
-	main_path.push("مصدر");
-	main_path.push("رئيسي");
-	main_path.set_extension("س");
- 	format!("{}", main_path.display())
-}
-
-//================
-//   main_path_en()
-//================
-pub fn main_path_en(home: &PathBuf) -> String {
-	let mut main_path = home.clone();
-	main_path.push("src");
-	main_path.push("main");
-	main_path.set_extension("seen");
-	format!("{}", main_path.display())
-}
-
-//================
-//   main_path()
-//================
-pub fn main_path(
-	lang: &Lang,
-	home: &PathBuf
-) -> String {
-	match lang {
-		Lang::Ar => main_path_ar(&home), 
-		Lang::En => main_path_en(&home)
-	}
-}
-
-
-//================
-//   main_src()
-//================
-pub fn main_src(home: &PathBuf) -> Result<String, String> {
-	let lang = proj_lang(home)?;
-	let path = main_path(&lang, &home);
-	match fs::read_to_string(path) {
-		Err(err) => Err(err.to_string()),
-		Ok(src) => Ok(src)
 	}
 }
 

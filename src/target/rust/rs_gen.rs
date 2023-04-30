@@ -1,23 +1,3 @@
-// #![allow(
-// 	unused_variables,
-// 	unused_allocation,
-// 	unused_assignments,
-// 	unused_attributes,
-// 	unused_braces,
-// 	unused_comparisons,
-// 	unused_doc_comments,
-// 	unused_features,
-// 	unused_imports,
-// 	unused_labels,
-// 	unused_macros,
-// 	unused_must_use,
-// 	unused_mut,
-// 	unused_parens,
-// 	unused_unsafe,
-// 	unused_variables,
-// 	dead_code
-// )]
-
 use std::{
     fs,
     fmt::{
