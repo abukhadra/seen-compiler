@@ -4,6 +4,7 @@ mod project;
 mod target;
 mod tool;
 mod util;
+mod transl;
 mod test;
 mod debug;
 
