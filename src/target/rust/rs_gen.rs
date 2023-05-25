@@ -249,6 +249,7 @@ impl <'a> Rust<'a> {
 //================
 //   fn_body()
 //================
+// FIXME: no need to match BlockElement::Expr variants here, just extract the Expr and send it to self.expr(..)
 impl <'a> Rust<'a> {
     fn fn_body(
         &mut self,
@@ -516,8 +517,13 @@ impl <'a> Rust<'a> {
             Expr::PreUniOp(uni_op) => self.pre_uni_op(uni_op),
             Expr::PostUniOp(uni_op) => self.post_uni_op(uni_op),
             Expr::BinOp(bin_op) => self.bin_op(bin_op),
-            Expr::Ret(expr) => self.expr(&expr),
+            // Expr::Ret(expr) => self.expr(&expr),        // FIXME: sometimes we need to write explicit return statements.
 
+            Expr::Match(_match) => self._match(&_match) ,
+            Expr::For(_for) => self._for(&_for) ,
+            Expr::While(_while) => self._while(&_while) ,
+            Expr::If(_if) => self._if(&_if) ,
+            Expr::Ret(expr) => self.expr(&expr) ,   // FIXME: sometimes we need to explicitly print "return"
             // FIXME temporary hardcoded variants
             Expr::Ok(expr) => {
                 let _ = write!(self.res, "Ok(");
