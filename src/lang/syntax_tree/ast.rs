@@ -82,6 +82,7 @@ pub enum Expr {
     While(While),
     If(If),
     Code(Code),
+    Ret(Box<Expr>), // FIXME: THIS IS WRONG, return is a statement not an expressionm move to BlockElement
 
     // FIXME: HARDCODING VARIANTS FOR THE DEMO
     Ok(Box<Expr>),

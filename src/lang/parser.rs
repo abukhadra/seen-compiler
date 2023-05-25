@@ -2379,7 +2379,23 @@ impl<'a> Parser<'a> {
             self.require_block_one_liner()
         };
         self.symtab().exit_scope();
+
         block
+    }
+}
+
+//================
+// return_last_expr()
+//================ 
+impl<'a> Parser<'a> {
+    pub fn return_last_expr (
+        &mut self,
+        els: &mut Vec<BlockElement>
+    ) {
+        let mut last = els.pop();
+        if let BlockElement::Expr(expr) = last {
+            els.push(BlockElement::Expr(Expr::Ret(expr)));
+        }
     }
 }
 
@@ -2416,7 +2432,8 @@ impl<'a> Parser<'a> {
                     els.push(BlockElement::Expr(expr));
                     
                 } else {
-                        let _ = self.require_close_curly()?;
+                    let _ = self.require_close_curly()?;
+                    self.return_last_expr(&mut els);
                     return Ok(els)
                 }                    
             }  
@@ -2438,6 +2455,7 @@ impl<'a> Parser<'a> {
         loop {
             if self.next_indent() < indent_by {     // FIXME: this assuming all stmts are one liners, starting at the same column
                 self.indents.pop();
+                self.return_last_expr(&mut els);
                 return Ok(els)          
             } else {            
                 if self.expect_let() {
@@ -2490,6 +2508,7 @@ impl<'a> Parser<'a> {
                 self.insert_err(error!("expecting end of block".to_string(),t));                                
             }                    
         }          
+        self.return_last_expr(&mut els);
         return Ok(els)
     }
 }

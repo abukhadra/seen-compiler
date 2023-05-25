@@ -1,6 +1,7 @@
 //================
 //   Text
 //================
+#[derive(Debug)]
 pub struct Text {
     pub ar: String,
     pub en: String

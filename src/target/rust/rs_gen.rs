@@ -228,7 +228,7 @@ impl <'a> Rust<'a> {
     
         for el in els {
             match el {
-                BlockElement::Expr(Expr::StructLiteral(data)) => {
+                BlockElement::Expr(Expr::Ret(Expr::StructLiteral(data))) => {
                     // FIXME just a quick hack to demo the project, in the real app, the attributes will alter the ast 
                     if self.is_attr("web_server", attrs) || self.is_attr("مخدم_شع", attrs){
                         self.web_server(&data);
@@ -299,7 +299,10 @@ impl <'a> Rust<'a> {
                 },                
                 BlockElement::Expr(Expr::Ref(name)) => {
                     let _ = write!(self.res, "{}", name);
-                },                            
+                },             
+                BlockElement::Expr(Expr::Ret(expr)) => {
+                    self.expr(&expr);
+                },            
                 x => {
                     todo!("{:?}", x) // TODO
                 }
@@ -507,6 +510,7 @@ impl <'a> Rust<'a> {
             Expr::PreUniOp(uni_op) => self.pre_uni_op(uni_op),
             Expr::PostUniOp(uni_op) => self.post_uni_op(uni_op),
             Expr::BinOp(bin_op) => self.bin_op(bin_op),
+            Expr::Ret(expr) => self.expr(&expr),
 
             // FIXME temporary hardcoded variants
             Expr::Ok(expr) => {
@@ -928,7 +932,7 @@ impl <'a> Rust<'a> {
 }
 
 //================
-//  pattern()
+//  block_element()
 //================  
 impl <'a> Rust<'a> {   
     pub fn block_element(
