@@ -34,6 +34,7 @@ impl fmt::Display for Expr {
             Self::While(e) => write!(f, "{:?}", e),
             Self::If(e) => write!(f, "{:?}", e),
             Self::Code(e) => write!(f, "{:?}", e),
+            Self::Ret(e) => write!(f, "return {:?}", e),
 
             Self::Ok(e) => write!(f, "Ok({:?})", e),
             Self::Err(e) => write!(f, "Err({:?})", e),

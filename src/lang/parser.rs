@@ -247,7 +247,6 @@ impl<'a> Parser<'a>{
     fn expect_id(&mut self) -> bool { expect!(&self, TokenValue::Id(_)) }
 
 
-
     //---------------------
     //  require_id()
     //---------------------    
@@ -2393,8 +2392,8 @@ impl<'a> Parser<'a> {
         els: &mut Vec<BlockElement>
     ) {
         let mut last = els.pop();
-        if let BlockElement::Expr(expr) = last {
-            els.push(BlockElement::Expr(Expr::Ret(expr)));
+        if let Some(BlockElement::Expr(expr)) = last {
+            els.push(BlockElement::Expr(Expr::Ret(Box::new(expr))));
         }
     }
 }

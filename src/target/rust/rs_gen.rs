@@ -228,11 +228,17 @@ impl <'a> Rust<'a> {
     
         for el in els {
             match el {
-                BlockElement::Expr(Expr::Ret(Expr::StructLiteral(data))) => {
-                    // FIXME just a quick hack to demo the project, in the real app, the attributes will alter the ast 
-                    if self.is_attr("web_server", attrs) || self.is_attr("مخدم_شع", attrs){
-                        self.web_server(&data);
+                BlockElement::Expr(Expr::Ret(v)) => {
+                    match *v {
+                        Expr::StructLiteral(data) => {
+                            // FIXME just a quick hack to demo the project, in the real app, the attributes will alter the ast 
+                            if self.is_attr("web_server", attrs) || self.is_attr("مخدم_شع", attrs){
+                                self.web_server(&data);
+                            }
+                        },
+                        _ => todo!()   // FIXME
                     }
+                    
                 }
                 _ => todo!() // TODO
             }

@@ -205,7 +205,7 @@ impl Compile {
 		};
 
 		let lang = conf::proj_lang(&home).expect("");
-		let transl = Transl::new(lang.clone());
+		let transl = Transl::new(&lang);
 		let proj_name = conf::proj_name(&transl, &home);
 		let build_path = build::build_path(&transl, &home, &proj_name);
 		let out = Some(format!("{}", build_path.display()));
@@ -251,7 +251,7 @@ impl Build {
 			Some(path) => path
 		};
 		let lang = conf::proj_lang(&home).expect("");
-		let transl = Transl::new(lang);
+		let transl = Transl::new(&lang);
 		let proj_name = conf::proj_name(&transl, &home);
 		let build_path = build::build_path(&transl, &home, &proj_name);
 		let work_dir = format!("{}", build_path.display());
@@ -280,7 +280,7 @@ impl Run {
 			Some(path) => path
 		};
 		let lang = conf::proj_lang(&home).expect("");
-		let transl = Transl::new(lang);
+		let transl = Transl::new(&lang);
 		let proj_name = conf::proj_name(&transl, &home);
 		let build_path = build::build_path(&transl, &home, &proj_name);
 		let work_dir = format!("{}", build_path.display());

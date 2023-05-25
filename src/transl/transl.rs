@@ -84,9 +84,9 @@ impl Transl {
     //---------------------
     //  new()
     //---------------------     
-    pub fn new(_proj_lang: Lang) -> Self {
+    pub fn new(_proj_lang: &Lang) -> Self {
         Self {
-            _proj_lang,
+            _proj_lang: _proj_lang.clone(),
             // project
             seen_ext:           Text::new(      SEEN_EXT_AR,                  SEEN_EXT_EN                     ),
             src:                Text::new(      "مصدر",                       "src"                           ),

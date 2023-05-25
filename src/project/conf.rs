@@ -56,7 +56,7 @@ impl Conf {
 			Err(err) => panic!("{}", err) // FIXME panic!
 		};
 
-		let transl = Transl::new(proj_lang);
+		let transl = Transl::new(&proj_lang);
 
 		let data = Self::elements(&transl, &home);
 
@@ -110,23 +110,23 @@ impl Conf {
 	//   elements()
 	//---------------------
 	pub fn elements(
-		&mut self,
+		// &mut self,
 		transl: &Transl,
 		home: &PathBuf,
 	) -> Vec<ConfElement> {
-		// let data = vec![];
+		let mut data = vec![];
 		let mut conf = home.clone();
 		conf.push(transl.conf());
 		conf.set_extension(transl.seen_ext());	
 		let ast = compiler::to_ast( format!("{}", conf.display()));
 		for el in ast {
-			match el {
+			match &el {
 				ModElement::MainFn(Fn{block: stmts,..}) => {
 					let mut main = Main::new();
 					for stmt in stmts {
 						match stmt {
 							BlockElement::Expr(Expr::Ret(_box)) => {
-								match *_box {
+								match &**_box {
 									Expr::StructLiteral(StructLiteral{items}) => {
 										for item in items {
 											// match items.get(0).unwrap() {
@@ -152,7 +152,7 @@ impl Conf {
 							_ => panic!("unexpected statement: {:?}", el) 
 						}								
 					}
-					self.data.push( ConfElement::Main(main) );
+					data.push( ConfElement::Main(main) );
 				},
 				ModElement::Fn(Fn{name: Some(t), block: stmts,..}) => {
 					// FIXME : !!!!!  NEED TO  EXECUTE THE BLOCK :
@@ -169,7 +169,7 @@ impl Conf {
 						 for stmt in stmts {
 							match stmt {
 								BlockElement::Expr(Expr::Ret(_box)) => {
-									match *_box {
+									match &**_box {
 										Expr::StructLiteral(StructLiteral{items}) => {
 											for item in items {
 												match item {
@@ -228,7 +228,7 @@ impl Conf {
 													},
 												}
 											}
-											self.data.push( ConfElement::Python(python) );
+											data.push( ConfElement::Python(python.clone()) );
 										},
 										_ => panic!("unexpected statement: {:?}", el) 										
 									}
@@ -243,29 +243,22 @@ impl Conf {
 				_ => panic!("unexpected element in the seen conf file: {:?}", el) 
 			}
 		}
-		self.data
+		data
 	}
  
 	//---------------------
 	//   proj_name()
 	//---------------------
 	pub fn proj_name(
+		&mut self,
 		transl: &Transl,
 		home: &PathBuf
 	) -> String {
-
+		println!("proj_name: {:?}", self.data);
+		String::from("INVALID NAME")	// FIXME
 	}
 
 }
-
-
-
-
-
-
-
-
-
 
 
 //================
@@ -346,13 +339,13 @@ pub fn proj_name(
 	}	
 }
 
-impl ConfData {
-	pub fn new() -> Self {
-		Self {
-			els: vec![]
-		}
-	}
-}
+// impl ConfData {
+// 	pub fn new() -> Self {
+// 		Self {
+// 			els: vec![]
+// 		}
+// 	}
+// }
 
 
 //================
@@ -369,7 +362,7 @@ pub enum ConfElement {
 //================
 //   Dep
 //================
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Dep {
 	pub name: String,
 	pub ver: String,
@@ -390,7 +383,7 @@ impl Dep {
 //================
 //   Python
 //================
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Python {
 	pub py_path: String,
 	pub pkg_man: String,
