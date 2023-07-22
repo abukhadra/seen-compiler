@@ -19,6 +19,10 @@ impl fmt::Debug for ModElement {
             Self::MainFn(e) => write!(f, "fn t{:?}", e),
             Self::Fn(e) => write!(f, "fn {:?}", e),
             Self::Struct(e) => write!(f, "struct {:?}", e),
+            Self::StructImpl(e) => write!(f, "impl struct {:?}", e),
+            Self::Trait(e) => write!(f, "trait {:?}", e),
+            Self::Enum(e) => write!(f, "enum {:?}", e),
+            Self::EnumImpl(e) => write!(f, "impl enum {:?}", e),
         }
     }
 }

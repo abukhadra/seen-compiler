@@ -9,28 +9,28 @@ use crate::lang::{
     parser::Parser,
 };
 
-
 //================
 //   fn()
 //================
 #[test]
 fn _fn() {
-	parse_en( indoc!{"
-        f(x:int, y:str) -> 
+	parse_en( indoc!{r#"
+        f(x:int, y:str) -> {
             a = x
             println(a)
-        end
-	"}); 
+		}
+	"#}); 
 }
 
 //================
 //   import()
 //================
+//  FIXME : NOT WORKING
 #[test]
 fn import() {
-	parse_en( indoc!{"
-        x = import(\"pkg\")
-	"}); 
+	parse_en( indoc!{r#"
+        x := import(\"pkg\")
+	"#}); 
 }
 
 //================
@@ -38,12 +38,13 @@ fn import() {
 //================
 #[test]
 fn fn_with_ret_type() {
-	parse_en( indoc!{"
-        f(x: int, y: str): str -> 
+	parse_en( indoc!{r#"
+        f(x: int, y: str): str -> {
             a = x
             println(a)
-        end
-	"}); 
+		}
+        
+	"#}); 
 }
 
 //================
@@ -51,12 +52,12 @@ fn fn_with_ret_type() {
 //================
 #[test]
 fn block() {
-	parse_en( indoc!{"
-        () -> 
+	parse_en( indoc!{r#"
+        () -> {
             f1(a b)
             f2(x, y)
-        end
-	"}); 
+		}
+	"#}); 
 }
 
 //================
@@ -64,9 +65,9 @@ fn block() {
 //================
 #[test]
 fn list() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> [1, a, b, d, f()]
-	"}); 
+	"#}); 
 }
 
 //================
@@ -74,9 +75,9 @@ fn list() {
 //================
 #[test]
 fn list_no_comma() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> [1 a b d f()]
-	"}); 
+	"#}); 
 }
 
 //================
@@ -84,30 +85,32 @@ fn list_no_comma() {
 //================
 #[test]
 fn list_access() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> list[3][4]
-	"}); 
+	"#}); 
 
 }
 
 //================
 //   tuple()
 //================
+// FIXME GOING TO INFINE LOOP!
 #[test]
 fn tuple() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> (1 a b d f())
-	"}); 
+	"#}); 
 }
 
 //================
 //   tuple_access()
 //================
+// FIXME NOT WORKING
 #[test]
 fn tuple_access() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> x.0
-	"}); 
+	"#}); 
 }
 
 
@@ -116,9 +119,9 @@ fn tuple_access() {
 //================
 #[test]
 fn lambda() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> () -> println()
-	"}); 
+	"#}); 
 }
 
 //================
@@ -126,9 +129,9 @@ fn lambda() {
 //================
 #[test]
 fn let_decl() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
 	let x = 10
-	"}); 	
+	"#}); 	
 }
 
 //================
@@ -136,9 +139,9 @@ fn let_decl() {
 //================
 #[test]
 fn short_decl() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
 	x := 10
-	"}); 	
+	"#}); 	
 }
 
 
@@ -147,21 +150,19 @@ fn short_decl() {
 //================
 #[test]
 fn destruct() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         (x, y) := get_data()
-	"}); 
+	"#}); 
 }
-
-
 
 //================
 //   fn_call()
 //================
 #[test]
 fn fn_call() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> f(a b)
-	"}); 
+	"#}); 
 
 }
 
@@ -170,31 +171,53 @@ fn fn_call() {
 //================
 #[test]
 fn _match() {
-	parse_en( indoc!{"
-	()-> 
-		match 1
-			| 1 => println(\"number 1\")
-			| 2 => println(\"number 2\")
-			| _ => println(\"unknown value\")
-		end
-	end		
-	"});
+	parse_en( indoc!{r#"
+	()-> {
+		match 1 {
+			1 => {
+				println("number 1")
+			}
+			2 => {
+				println("number 2")
+			}
+			_ => {
+				println("unknown value")	
+			}
+		}
+	}
+	"#});
 }
 
 //================
-//   _match_curly()
+//   _match_one_liner()
 //================
 #[test]
-fn _match_curly() {
-	parse_en( indoc!{"
-	()-> { 
+fn _match_one_liner() {
+	parse_en( indoc!{r#"
+	()-> {
 		match 1 {
-			| 1 =>  println(\"number 1\") 
-			| 2 =>  println(\"number 2\") 
-			| _ =>  println(\"unknown value\") 
+			1 => 1 
+			2 => 2 
+			_ => 3 
 		}
-	}	
-	"});
+	}
+	"#});
+}
+
+//================
+//   arm_oneliner_fn_call()
+//================
+#[test]
+fn arm_oneliner_fn_call() {
+	parse_en( indoc!{r#"
+	()-> {
+		match 1 {			
+			1 => 2
+			2 => 1 + 2 
+			_ => println("number 1")
+		}
+	}
+	"#});
 }
 
 //================
@@ -202,56 +225,41 @@ fn _match_curly() {
 //================
 #[test]
 fn pat_matching1() {
-	parse_en( indoc!{"
-
-	// fib(0) -> 0
-	// fib(1) -> 1
-	// fib(n) -> fib(n-1) + fib(n-2)
-
-
-	fib(0) -> 
-		0
-	end
-	fib(1) -> 
-		1
-	end
-	fib(n) -> 
-		fib(n-1) + fib(n-2)
-	end
-
-	"});
+	parse_en( indoc!{r#"
+	fib(0) -> 0
+	fib(1) -> 1
+	fib(n) -> fib(n-1) + fib(n-2)
+	"#});
 }
-
 
 //================
 //   _for()
 //================
 #[test]
 fn _for() {
-	parse_en( indoc!{"
-	()-> 
-		for x in [1 2 3]
+	parse_en( indoc!{r#"
+	()-> {
+		for x in [1 2 3] {
 			println(x)
-		end
-	end		
-	"});
+		}
+	}
+	"#});
 }
-
 
 //================
 //   _while()
 //================
 #[test]
 fn _while() {
-	parse_en( indoc!{"
-	()-> 
+	parse_en( indoc!{r#"
+	()-> {
 		x := 2
-		while 1 == x
+		while 1 == x {
 			println(x)
 			break
-		end
-	end		
-	"});
+		}
+	}
+	"#});
 }
 
 
@@ -260,17 +268,17 @@ fn _while() {
 //================
 #[test]
 fn _if() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
 	()-> 
-		if 1 == 2
+		if 1 == 2 {
 			println(1)
-		else if 2 == 3
+		} else if 2 == 3 {
 			println(2)
-		else 
+		} else {
 			println(3)
-		end
-	end		
-	"});
+		}
+			
+	"#});
 }
 
 
@@ -279,9 +287,9 @@ fn _if() {
 //================
 #[test]
 fn unit() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> ()
-	"}); 
+	"#}); 
 
 }
 
@@ -291,9 +299,9 @@ fn unit() {
 //================
 #[test]
 fn chain() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> f().b.c.d()
-	"}); 
+	"#}); 
 
 }
 
@@ -302,9 +310,9 @@ fn chain() {
 //================
 #[test]
 fn op_precedence1() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         () -> a + b * 9
-	"}); 
+	"#}); 
 
 }
 
@@ -314,10 +322,10 @@ fn op_precedence1() {
 //================
 #[test]
 fn op_precedence2() {
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
 		// () -> fib1(n-1) + fib2(n-2)
 		() -> f() + g()
-	"}); 
+	"#}); 
 
 }
 
@@ -328,7 +336,7 @@ fn op_precedence2() {
 //================
 #[test]
 fn op_lassoc() {	
-	parse_en( indoc!{"
+	parse_en( indoc!{r#"
         // let x = 1 + 3 * 5
 		// let x = -1 * 2
 		// let x = -3 * -5 + -1 * 6
@@ -361,7 +369,7 @@ fn op_lassoc() {
 
 
 
-	"});    
+	"#});    
 }
 
 //================
@@ -369,9 +377,9 @@ fn op_lassoc() {
 //================
 #[test]
 fn op_rassoc() {	
-	parse_en( indoc!{"
-        x = y = 1 + 3 + 5
-	"});    
+	parse_en( indoc!{r#"
+        x := y = 1 + 3 + 5
+	"#});    
 }
 
 
@@ -381,8 +389,8 @@ fn op_rassoc() {
 //================
 #[test]
 fn hello_world() {	
-	parse_en( indoc!{"
-    ()-> println(\"hello world\");"});    
+	parse_en( indoc!{r#"
+    ()-> println(\"hello world\");"#});    
 }
 
 //================
@@ -390,11 +398,92 @@ fn hello_world() {
 //================
 #[test]
 fn hello_world_ar() {	
-	parse_ar( indoc!{"
+	parse_ar( indoc!{r#"
         ()-> اطبع_سطر(\"السلام عليكم\")
-    "});
+    "#});
 }
 
+
+//================
+//   struct_en()
+//================
+#[test]
+fn struct_en() {	
+	parse_en( indoc!{r#"
+        Point {
+			x: int 
+			y: int
+		}
+    "#});
+}
+
+//================
+//   struct_ar()
+//================
+#[test]
+fn struct_ar() {	
+	parse_ar( indoc!{r#"
+         النقطة {
+			س: صحيح
+			ص: صحيح
+		 }
+    "#});
+}
+
+//================
+//   struct_assign_en()
+//================
+#[test]
+fn struct_assign_en() {	
+	parse_en( indoc!{r#"
+	p1 := Point {
+		x: 1
+		y: 1
+	}
+    "#});
+}
+
+
+//================
+//   struct_def_assign_en()
+//================
+#[test]
+fn struct_def_assign_en() {	
+	parse_en( indoc!{r#"
+		Point {
+			x: int 
+			y: int
+		}
+		() -> {
+			p1 := Point {
+				x: 1
+				y: 1
+			}
+			println(p1)
+		}
+    "#});
+}
+
+//================
+//   struct_def_assign_ar()
+//================
+#[test]
+fn struct_def_assign_ar() {	
+	parse_ar( indoc!{r#"
+	النقطة {
+		س: صحيح
+		ص: صحيح 
+	}
+	()-> {
+		نق١ := النقطة {
+			س: ١
+			ص: ١ 
+		}
+		اطبع(نق١)
+	}
+
+    "#});
+}
 
 
 //================

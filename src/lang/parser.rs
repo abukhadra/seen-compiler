@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::{
     token::{
         Token, 
@@ -47,7 +49,7 @@ pub struct Parser<'a> {
     ast: Option<Vec<ModElement>>,
     symtab: Option<SymTab>,
     errors: Option<Vec<Error>>,
-    indents: Vec<Token>
+    // indents: Vec<Token> 
 } // TODO
 
 impl<'a> Parser<'a>{
@@ -61,7 +63,7 @@ impl<'a> Parser<'a>{
             ast: None,
             symtab: None,
             errors: None,
-            indents: vec![]
+            // indents: vec![]
         }
     }
 
@@ -77,7 +79,7 @@ impl<'a> Parser<'a>{
         self.ast = Some(vec![]);
         self.symtab = Some(SymTab::new());
         self.errors = Some(vec![]);
-        self.indents = vec![];
+        // self.indents = vec![];   
         
     }    
 
@@ -90,10 +92,10 @@ impl<'a> Parser<'a>{
     ) -> (Vec<ModElement>, SymTab, Vec<Error>) {
         self.init(tokens);
         while !self.expect_eof() {
-            let attrs = self.maybe_attrs();
+            let attrs = self.maybe_attrs(); // FIXME: should test if Some(attrs) and test only for constructs that accept/require attrs, then in the else test for the ones that don't
 
             let t = self.lookahead();
-            self.indents.push(t);
+            // self.indents.push(t);
             if let Some(decl) = self.maybe_let_decl() {
                 self.mod_insert(ModElement::Decl(decl));
             } else if let Some(e) = self.maybe_lambda_or_decl(&attrs) {
@@ -107,7 +109,13 @@ impl<'a> Parser<'a>{
                 if let Some(_fn) = self.maybe_fn(Some(&id), &attrs) {
                     let _ = self.symtab().insert_fn(&_fn);
                     self.mod_insert(ModElement::Fn(_fn));    
-                } else  if let Some(decl) = self.maybe_short_decl(Some(&id)) {
+                } else if let Some(e) = self.maybe_struct(&id, &attrs) {
+                    self.mod_insert(ModElement::Struct(e));
+                } else if let Some(e) = self.maybe_struct_impl(&id) {
+                    self.mod_insert(ModElement::StructImpl(e));
+                } else if let Some(e) = self.maybe_enum_impl(&id) {
+                    self.mod_insert(ModElement::EnumImpl(e));
+                }  else  if let Some(decl) = self.maybe_short_decl(Some(&id)) {
                     let _ = self.symtab().insert_decl(&decl);
                     self.mod_insert(ModElement::Decl(decl));
                 } else {
@@ -116,8 +124,10 @@ impl<'a> Parser<'a>{
                     );
                 }
                 
-            } else if let Some(e) = self.maybe_struct(&attrs) {
-                self.mod_insert(ModElement::Struct(e));
+            } else if let Some(e) = self.maybe_trait() {
+                self.mod_insert(ModElement::Trait(e));
+            } else if let Some(e) = self.maybe_enum() {
+                self.mod_insert(ModElement::Enum(e));
             } else {                    
                 let t = self.lookahead();
 
@@ -132,7 +142,7 @@ impl<'a> Parser<'a>{
                 );
                 break;
             };
-            self.indents.pop();
+            // self.indents.pop();
         }
 
         (
@@ -665,6 +675,8 @@ impl<'a> Parser<'a>{
         || expect!(&self, TokenValue::Caret)
         // || expect!(&self, TokenValue::ArgList)
         // || expect!(&self, TokenValue::Index)
+        // || expect!(&self, TokenValue::OpenCurly)
+        || self.expect_struct_literal()
         || expect!(&self, TokenValue::OpenParen)
         || expect!(&self, TokenValue::OpenBracket)
         || expect!(&self, TokenValue::Equal)
@@ -723,6 +735,15 @@ impl<'a> Parser<'a>{
     }
 
     //---------------------
+    //  expect_struct_literal()
+    //---------------------        
+    fn expect_struct_literal(&mut self) -> bool {
+        // expect!(&self, TokenValue::OpenCurly)
+        self.is_struct_literal()        
+    }
+    
+
+    //---------------------
     //  require_arg_list()
     //---------------------        
     fn require_arg_list(&mut self) -> Result<Token, Error> {
@@ -763,79 +784,6 @@ impl<'a> Parser<'a>{
     //  expect_eof()
     //---------------------    
     fn expect_eof(&mut self) -> bool { expect!(&self, TokenValue::Eof) }
-
-    //---------------------
-    //  indent_offset()
-    //---------------------  
-    fn indent_offset(
-        &mut self,        
-        t: &Token 
-    ) -> i32 {
-        match self.indents.last() {
-            Some(Token{location: loc, ..}) => {
-                if loc.line < t.location.line {
-                    let offset =  t.location.column as i32 - loc.column as i32;
-                    offset
-    
-                } else {
-                    0
-                }
-            },
-            None => 0
-        }
-    }
-
-    //---------------------
-    //  next_indent()
-    //---------------------    
-    fn next_indent(&mut self) -> i32 {
-        let t = &self.lookahead();
-        let offset = self.indent_offset(t);
-        offset
-    }    
-
-
-    //---------------------
-    //  expect_indent()
-    //---------------------    
-    fn expect_indent(&mut self) -> bool {
-        let t = &self.lookahead();
-        let offset = self.indent_offset(t);
-        offset > 0
-    }    
-
-    //---------------------
-    //  require_indent()
-    //---------------------    
-    fn require_indent(&mut self) -> Result<(), Error> {
-        if self.expect_indent() {
-            Ok(())
-        } else {
-            let t = self.lookahead();
-            Err(error!( format!("expecting indentation"), t ))
-        }
-    }    
-
-    //---------------------
-    //  expect_dedent()
-    //---------------------    
-    fn expect_dedent(&mut self) -> bool {
-        let t = &self.lookahead();
-        let offset = self.indent_offset(t);
-        offset <= 0        
-    }    
-
-    //---------------------
-    //  require_dedent()
-    //---------------------    
-    fn require_dedent(&mut self) -> Result<(), Error> {
-        if self.expect_dedent() {
-            Ok(())
-        } else {
-            let t = self.lookahead();
-            Err(error!( format!("expecting dedentation"), t ))
-        }
-    }    
 
     //---------------------
     //  mod_insert()
@@ -1192,7 +1140,7 @@ impl<'a> Parser<'a> {
 //================
 impl<'a> Parser<'a> {
     pub fn maybe_struct_literal (&mut self) -> Option<StructLiteral> {
-        if !self.is_struct_literal() && !self.is_struct_literal_no_curly() { return None}
+        if !self.is_struct_literal() { return None}
         let open_curly = if self.expect_open_curly() {
             self.next();
             true
@@ -1210,27 +1158,20 @@ impl<'a> Parser<'a> {
             if open_curly && self.expect_close_curly() {
                 self.next();
                 return Some(literal);
-            } else if self.expect_dedent() {
-                self.indents.pop();
-                return Some(literal);
             }
 
+
             let t = self.lookahead();
-            self.indents.push(t);                            
+                               
             let key = self.require_id();
             let key = self.res_to_opt(key)?;
 
             let colon = self.require_colon();
             let _ = self.res_to_opt(colon)?;
 
-            if !open_curly && self.expect_new_line() {
-                let indent = self.require_indent();
-                let indent = self.res_to_opt(indent)?;
-            }
-
             let expr = self.require_expr();
             let expr = self.res_to_opt(expr)?;
-            self.indents.pop();
+
             literal.items.push((key, Some(expr)));
             self.optional_comma();
         }
@@ -1619,7 +1560,6 @@ impl<'a> Parser<'a> {
     }
 }
 
-
 //================
 // maybe_short_decl()
 //================
@@ -1760,7 +1700,6 @@ impl<'a> Parser<'a> {
             if let Some(cond) = cond {
                 if !cond { break; }
             }  
-
             match self.require_op(&expr) {
                 Err(err) => panic!("bug : {:?} ", err),
                 Ok(_expr) => {
@@ -1788,8 +1727,8 @@ impl<'a> Parser<'a> {
             Some(l_opr)
             
         } else if self.expect_bin_op() {
+
             if let Some(expr) = self.l_opr_prefix_bin(&l_opr, &op) {
-                // l_opr = expr;
                 return Some(expr)
             } 
 
@@ -2039,6 +1978,9 @@ impl<'a> Parser<'a> {
         } else if self.expect_arg_list() {
             let fn_call = self.require_fn_call();   // FIXME: also variants! replace with require_fn_call_variant
             self.res_to_opt(fn_call)            
+        } else if self.expect_struct_literal() {
+            let struct_init = self.require_struct_init();   
+            self.res_to_opt(struct_init)            
         } else if self.expect_dot() {
             let access = self.require_access(&l_opr);
             self.res_to_opt(access)
@@ -2104,6 +2046,18 @@ impl<'a> Parser<'a> {
     }
 }
 
+
+//================
+// require_struct_init()
+//================
+impl<'a> Parser<'a> {
+    fn require_struct_init(&mut self) -> Result<Expr, Error> {
+        let struct_literal = self.require_struct_lietral()?;
+        Ok(Expr::StructLiteral(struct_literal))
+    }
+}
+
+
 //================
 // require_list_index()
 //================
@@ -2122,20 +2076,82 @@ impl<'a> Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn maybe_struct (
         &mut self,
-        _attrs: &Option<Vec<Attr>>
+        id: &Token,
+        attrs: &Option<Vec<Attr>>
     )  -> Option<Struct> {
-        None    // TODO
+
+        if !self.expect_open_curly() { return None }
+        self.next();
+
+        let name = id.clone();
+        self.symtab().new_scope();        
+        let attrs = if let Some(attrs) = attrs {
+            attrs.clone()
+        } else {
+            vec![]
+        };
+
+        let fields = self.maybe_struct_fields();
+        let fields = self.res_to_opt(fields);
+
+        let impls = vec![];
+
+        self.symtab().exit_scope();
+            
+        Some( 
+            Struct {
+                name,
+                attrs,
+                fields,
+                impls
+            }
+        )
     }
 }
 
 //================
-// maybe_impl()
+// maybe_struct_fields()
 //================
 impl<'a> Parser<'a> {
-    pub fn maybe_impl (
+    fn maybe_struct_fields (
         &mut self,
-        _attrs: &Option<Vec<Attr>>
-    )  -> Option<Struct> {
+    )  -> Result<StructFields, Error> {
+        let mut fields: StructFields = HashMap::new();
+        
+        loop {
+            if self.expect_id() {
+                let field = self.require_field()?;
+                fields.insert(field.0, field.1);
+            }  else {
+                let close_curly = self.require_close_curly()?;
+                return Ok(fields)
+            }
+        }         
+    }
+}
+
+//================
+// require_field()
+//================
+impl<'a> Parser<'a> {
+    fn require_field(
+        &mut self
+    ) -> Result<(Token, Type), Error> {
+        let field_name = self.require_id()?;
+        let _ = self.require_colon()?;
+        let field_type = self.require_type()?;
+        Ok((field_name, field_type))
+    }
+}
+
+//================
+// maybe_struct_impl()
+//================
+impl<'a> Parser<'a> {
+    pub fn maybe_struct_impl (
+        &mut self,
+        id: &Token
+    )  -> Option<StructImpl> {
         None    // TODO
     }
 }
@@ -2146,8 +2162,30 @@ impl<'a> Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn maybe_trait (
         &mut self,
-        _attrs: &Option<Vec<Attr>>
-    )  -> Option<Struct> {
+    )  -> Option<Trait> {
+        None    // TODO
+    }
+}
+
+//================
+// maybe_enum()
+//================
+impl<'a> Parser<'a> {
+    pub fn maybe_enum (
+        &mut self,
+    )  -> Option<Enum> {
+        None    // TODO
+    }
+}
+
+//================
+// maybe_enum_impl()
+//================
+impl<'a> Parser<'a> {
+    pub fn maybe_enum_impl (
+        &mut self,
+        id: &Token,
+    )  -> Option<EnumImpl> {
         None    // TODO
     }
 }
@@ -2331,38 +2369,6 @@ impl<'a> Parser<'a> {
 }
 
 //================
-// is_struct_literal_no_curly()
-//================ 
-impl<'a> Parser<'a> {
-    pub fn is_struct_literal_no_curly(&mut self) -> bool {
-        let mut i = 1;
-        let mut starts_with = vec![];
-        loop {
-            let t = self.lookahead_n_ws(i);
-            match t.value  {
-                TokenValue::NewLine => (),
-                TokenValue::Eof => break,
-                x => {
-                    starts_with.push(x);
-                    if starts_with.len() == 2 { 
-                        break; 
-                    }
-                }   
-            }
-            i += 1;
-        }
-
-        match starts_with[..] {
-            [
-                TokenValue::Id(_),
-                TokenValue::Colon                
-            ] => true, 
-            _ => false
-        }
-    }
-}
-
-//================
 // require_block()
 //================ 
 impl<'a> Parser<'a> {
@@ -2372,8 +2378,6 @@ impl<'a> Parser<'a> {
         self.symtab().new_scope();
         let block = if self.expect_open_curly() {
             self.require_block_curly()
-        } else if self.expect_new_line() {
-            self.require_block_indent()
         } else {
             self.require_block_one_liner()
         };
@@ -2391,8 +2395,10 @@ impl<'a> Parser<'a> {
         &mut self,
         els: &mut Vec<BlockElement>
     ) {
-        let mut last = els.pop();
-        if let Some(BlockElement::Expr(expr)) = last {
+        // let mut last = els.pop();
+        if let Some(BlockElement::Expr(expr)) = els.last() {
+            let expr = expr.clone();
+            els.pop();
             els.push(BlockElement::Expr(Expr::Ret(Box::new(expr))));
         }
     }
@@ -2407,7 +2413,7 @@ impl<'a> Parser<'a> {
     )  -> Result<Vec<BlockElement>, Error> {
         let mut els = vec![];      
 
-        if self.is_struct_literal() || self.is_struct_literal_no_curly() {
+        if self.is_struct_literal() {
             let t = self.lookahead();
             let expr = Expr::StructLiteral(self.require_struct_lietral()?);
             self.symtab().exit_scope();
@@ -2441,53 +2447,13 @@ impl<'a> Parser<'a> {
 }
 
 //================
-// require_block_indent()
-//================ 
-impl<'a> Parser<'a> {
-    pub fn require_block_indent (
-        &mut self,
-    )  -> Result<Vec<BlockElement>, Error> {
-        let mut els = vec![];        
-
-        let indent_by = self.next_indent();
-
-        loop {
-            if self.next_indent() < indent_by {     // FIXME: this assuming all stmts are one liners, starting at the same column
-                self.indents.pop();
-                self.return_last_expr(&mut els);
-                return Ok(els)          
-            } else {            
-                if self.expect_let() {
-                    let decl = self.require_let_decl()?;
-                    els.push(BlockElement::Decl(decl));
-                } else if self.expect_short_decl() {
-                    if let Some(decl) = self.maybe_short_decl(None) {
-                        self.require_terminator()?;
-                        els.push(BlockElement::Decl(decl));                    
-                    }                
-                } else {
-                    if let Some(expr) = self.maybe_expr() {
-                        self.require_terminator()?;
-                        els.push(BlockElement::Expr(expr));
-                        
-                    } else {
-                        let t = self.lookahead();
-                        self.insert_err(error!("expecting end of block".to_string(),t));                                
-                        return Ok(els)
-                    }                    
-                }  
-            }
-        }        
-    }
-}
-
-//================
 // require_block_one_liner()
 //================ 
 impl<'a> Parser<'a> {
     pub fn require_block_one_liner (
         &mut self,
     )  -> Result<Vec<BlockElement>, Error> {
+
         let mut els = vec![];        
         if self.expect_let() {
             let decl = self.require_let_decl()?;
@@ -2495,7 +2461,7 @@ impl<'a> Parser<'a> {
         } else if self.expect_short_decl() {
             if let Some(decl) = self.maybe_short_decl(None) {
                 self.require_terminator()?;
-                els.push(BlockElement::Decl(decl));                    
+                els.push(BlockElement::Decl(decl));    
             }                
         } else {
             if let Some(expr) = self.maybe_expr() {
@@ -2507,7 +2473,8 @@ impl<'a> Parser<'a> {
                 self.insert_err(error!("expecting end of block".to_string(),t));                                
             }                    
         }          
-        self.return_last_expr(&mut els);
+
+        self.return_last_expr(&mut els);   // TODO: this should be called only on blocks that return, not on cases like  x:= 3 , make sure to split the 2 scenarios
         return Ok(els)
     }
 }
@@ -2642,31 +2609,26 @@ impl<'a> Parser<'a> {
         if !self.expect_match() { return None }
 
         let t = self.next();
-        self.indents.push(t);
         let expr = self.require_expr();
         let open_curly = self.expect_open_curly();
         if open_curly { self.next(); }
         let expr = self.res_to_opt(expr)?;
 
         let mut arms = vec![];
-        let indent_by = self.next_indent();
+
         loop {
-            if self.next_indent() == indent_by {    // FIXME
-                if let Some(arm) = self.maybe_match_arm() {
-                    arms.push(arm);
-                } else {
-                    break;
-                }    
+
+            if let Some(arm) = self.maybe_match_arm() {
+                arms.push(arm);
             } else {
                 break;
-            }
+            }    
         }
         if open_curly { 
             let close_curly = self.require_close_curly();
             let _ = self.res_to_opt(close_curly);
         } 
 
-        self.indents.pop();
         Some( 
             Match { 
                 expr: Box::new(expr), 
@@ -2683,20 +2645,16 @@ impl<'a> Parser<'a> {
     fn maybe_match_arm(
         &mut self,    
     ) -> Option<Arm> {
-        // if !self.expect_bar() { return None }
-        // self.next();
-        // if self.expect_indent() { return None };
+        if self.expect_close_curly() { return None }
+
         let pattern = self.require_pattern();
         let pattern = self.res_to_opt(pattern)?;
+
         let arrow = self.require_arrow();
         let _ = self.res_to_opt(arrow)?;
-
-        // let expr = self.require_block(vec![TokenValue::End, TokenValue::Bar]);
-        // let (expr, _) = self.res_to_opt(expr)?;
-
+        
         let expr = self.require_block();
         let expr = self.res_to_opt(expr)?;
-
 
         Some(
             Arm {
@@ -2714,25 +2672,15 @@ impl<'a> Parser<'a> {
     fn maybe_for(
         &mut self,    
     ) -> Option<For> {
+        
         if !self.expect_for() { return None };
         
         let t = self.next();
-        self.indents.push(t);
-
+        
         let in_expr = self.require_in_expr();
         let in_expr = self.res_to_opt(in_expr)?;  
-
         let block = self.require_block();
         let block = self.res_to_opt(block)?;        
-
-        // let block = self.require_block(vec![TokenValue::End]);
-        // let (block, is_multiline) = self.res_to_opt(block)?;
-
-        // if is_multiline {
-        //     let end = self.require_end();
-        //     let _ = self.res_to_opt(end)?;    
-        // }
-        self.indents.pop();
         Some( For { in_expr, block } )
     }
 }
@@ -2745,9 +2693,12 @@ impl<'a> Parser<'a> {
     pub fn require_in_expr (
         &mut self,
     )  -> Result<InExpr, Error> {
+
         let pattern = self.require_pattern()?;
+
         self.require_in()?;
         let expr = self.require_expr()?;
+
         Ok(InExpr { pattern, expr: Box::new(expr) })
     }
 }
@@ -2948,6 +2899,8 @@ impl<'a> Parser<'a> {
     }
 }
 
+
+
 //================
 // maybe_code()
 //================
@@ -3107,8 +3060,8 @@ impl<'a> Parser<'a> {
                             Some(expr)
                         }
                     },
-                    _ => {
-                        expr = self.while_op(&expr, None);
+                    _ => {                        
+                        expr = self.while_op(&expr, None);                        
                         Some(expr)        
                     }
                 }

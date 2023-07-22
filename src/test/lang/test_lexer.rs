@@ -14,10 +14,10 @@ use crate::util::print::eprintln_red;
 //================
 #[test]
 fn tatweel() {
-	scan_ar( indoc!{"
+	scan_ar( indoc!{r#"
 		عرف
 		عــــــــــرفــــــــ
-	"});
+	"#});
 
 }
 
@@ -27,10 +27,10 @@ fn tatweel() {
 //================
 #[test]
 fn valid_id() {
-	scan_en( indoc!{"
+	scan_en( indoc!{r#"
 		dsf
 		_fت٩9
-	"});
+	"#});
 
 }
 
@@ -39,14 +39,14 @@ fn valid_id() {
 //================
 #[test]
 fn valid_ar_num() {
-	scan_ar( indoc!{"
+	scan_ar( indoc!{r#"
 		١٢٣	
 		١٢٣,٨٣
 		٠,٣٢٤	
 		4334
 		32.0
 		9.34
-	"});
+	"#});
 
 }
 
@@ -56,12 +56,12 @@ fn valid_ar_num() {
 //================
 #[test]
 fn invalid_ar_num() {
-	scan_ar( indoc!{"
+	scan_ar( indoc!{r#"
 			234٤٣٤
 			234.٤٣٤
 			٤٣٤fdf
 			٤٣٤,fdf
-	"});
+	"#});
 }
 
 
@@ -70,11 +70,11 @@ fn invalid_ar_num() {
 //================
 #[test]
 fn valid_en_num() {
-	scan_en( indoc!{"
+	scan_en( indoc!{r#"
 			234
 			23.8
 			0.434
-	"});
+	"#});
 
 }
 
@@ -84,12 +84,12 @@ fn valid_en_num() {
 //================
 #[test]
 fn invalid_en_num() {
-	scan_en( indoc!{"
+	scan_en( indoc!{r#"
 			234٤٣٤
 			٤٣٤fdf
 			234f
 			234.f
-	"});
+	"#});
 
 }
 
@@ -112,10 +112,12 @@ fn scan(
 ) {
 	let script = Script::from_str(src);
 
-	let (_, errs) = Lexer::new().tokens(&lang, &script);
+	let (tokens, errs) = Lexer::new().tokens(&lang, &script);
 	println!("{:#?}", errs);	
     if !errs.is_empty() {
         eprintln_red(format!("{:#?}", errs).as_str());
         panic!();
-    }	
+    } else {
+		println!("{:?}", tokens);
+	}	
  }

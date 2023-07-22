@@ -95,7 +95,11 @@ impl <'a> Rust<'a> {
                 ModElement::Decl(el) => self.asgmt(el),
                 ModElement::MainFn(el) => self.main_fn(el),
                 ModElement::Fn(el) => self._fn(el),
-                ModElement::Struct(el) =>  self._struct(el)
+                ModElement::Struct(el) =>  self._struct(el),
+                ModElement::StructImpl(el) => self.struct_impl(el),
+                ModElement::Trait(el) => self._trait(el),
+                ModElement::Enum(el) => self._enum(el),
+                ModElement::EnumImpl(el) => self.enum_impl(el),                
             }
         }
         match fs::write(&self.proj_dir.src.main, &self.res){
@@ -400,6 +404,54 @@ impl <'a> Rust<'a> {
     fn _struct(
         &mut self,
         _struct: Struct,
+    ) {
+        todo!();    // TODO
+    }
+}
+
+//================
+//   struct_impl()
+//================
+impl <'a> Rust<'a> {
+    fn struct_impl(
+        &mut self,
+        struct_impl: StructImpl,
+    ) {
+        todo!();    // TODO
+    }
+}
+
+//================
+//   _trait()
+//================
+impl <'a> Rust<'a> {
+    fn _trait(
+        &mut self,
+        _trait: Trait,
+    ) {
+        todo!();    // TODO
+    }
+}
+
+//================
+//   _enum()
+//================
+impl <'a> Rust<'a> {
+    fn _enum(
+        &mut self,
+        _enum: Enum,
+    ) {
+        todo!();    // TODO
+    }
+}
+
+//================
+//   enum_impl()
+//================
+impl <'a> Rust<'a> {
+    fn enum_impl(
+        &mut self,
+        enum_impl: EnumImpl,
     ) {
         todo!();    // TODO
     }

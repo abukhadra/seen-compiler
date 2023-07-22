@@ -8,9 +8,8 @@ use crate::lang::token::{Token, TokenValue};
 //================
 //   Aliases
 //================
-
 pub type StructFieldsTypes = HashMap<Token, Option<Type>>;
-pub type StructFields = HashMap<Token, Option<Type>>;
+pub type StructFields = HashMap<Token, Type>;
 pub type StructPatternFields = HashMap<Token, Option<Pattern>>;
 pub type StructLiteralFields = Vec<(Token, Option<Expr>)>;
 
@@ -22,6 +21,10 @@ pub enum ModElement {
     MainFn(Fn),
     Fn(Fn),
     Struct(Struct),
+    StructImpl(StructImpl),
+    Trait(Trait),
+    Enum(Enum),
+    EnumImpl(EnumImpl)
 }
 
 //================
@@ -222,8 +225,18 @@ pub struct StructType {
 #[derive(Debug)]
 pub struct Struct{
     pub name: Token,
-    pub fields: StructFields,
+    pub attrs: Vec<Attr>,
+    pub fields: Option<StructFields>,
     pub impls: Vec<Impl>
+}
+
+//================
+//   StructImpl
+//================
+#[derive(Debug)]
+pub struct StructImpl{
+    pub name: Token,
+    pub fns: Vec<Fn>
 }
 
 //================
@@ -265,6 +278,15 @@ pub struct Enum{
     pub name: Token,
     pub variants: Vec<Variant>,
     pub impls: Vec<Impl>
+}
+
+//================
+//   EnumImpl
+//================
+#[derive(Debug)]
+pub struct EnumImpl{
+    pub name: Token,
+    pub fns: Vec<Fn>
 }
 
 //================
