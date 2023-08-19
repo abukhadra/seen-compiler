@@ -78,6 +78,7 @@ impl fmt::Debug for TokenValue {
             Self::CloseCurly => "}".to_string(),
             Self::Semicolon => ";".to_string(),
             Self::Colon => ":".to_string(),
+            Self::DoubleColon => "::".to_string(),
             Self::Comma => ",".to_string(),
             Self::ThinArrow => "->".to_string(),
             Self::Arrow => "=>".to_string(),
@@ -99,6 +100,7 @@ impl fmt::Debug for TokenValue {
             Self::While => "while".to_string(),
             Self::If => "if".to_string(),
             Self::Else => "else".to_string(),
+            Self::Use=> "use".to_string(),
             Self::Eof => "eof".to_string(),
         };
         write!(fmt, "{}", x.to_string())

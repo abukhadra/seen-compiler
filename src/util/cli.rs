@@ -203,21 +203,139 @@ impl Compile {
 			None => std::env::current_dir().unwrap(),
 			Some(path) => path
 		};
-
+		
 		let lang = conf::proj_lang(&home).expect("");
 		let transl = Transl::new(&lang);
 		let proj_name = conf::proj_name(&transl, &home);
 		let build_path = build::build_path(&transl, &home, &proj_name);
 		let out = Some(format!("{}", build_path.display()));
-		let main_path = src::main_path(&transl, &home);
-		let paths = vec![main_path];
-		if let Err(err) = compiler::compile(lang, &proj_name, out, paths ) {
+
+		let paths = Compile::src_paths(&transl, &home, &proj_name);
+		let main_mods = Compile::main_mods(&transl, &home, &proj_name);
+	
+		if let Err(err) = compiler::compile(lang, &transl, &home, &proj_name, out, paths, main_mods ) {
 			panic!("{}", err);
 		  }  	
-	
+		
 		println!("{} built successfully.", proj_name);
 	}
+
+	//---------------------
+	//   main_mods
+	//---------------------
+	// FIXME: instead of reading directories twice, combine main_mods and src_paths in one loop
+	pub fn main_mods(
+		transl: &Transl, 
+		home: &PathBuf,
+		proj_name: &String
+	) -> Vec<String> {
+		let mut mods = vec![];
+		let src_path = src::src_path(&transl, &home);
+		let src_content = std::fs::read_dir(src_path).expect("expecting src dir");	// FIXME handle error		
+		
+		for el in src_content {		
+			let el = el.expect("expecting element");
+			if el.file_type().expect("expecting filet ype").is_file() {
+				let path =  el.path();			
+				if let Some(ext) = path.extension() {				
+					if ext == "rs"  {	// FIXME: hardcoded
+						if path.file_name().expect("file name").to_str().expect("os str").to_string() != "lib.rs" {
+							mods.push(path.file_stem().expect("file_stem").to_str().expect("os str").to_string());
+						}
+						
+					}
+				}
+
+			}
+		}
+		mods	
+	}
+
+	//---------------------
+	//   src_paths
+	//---------------------
+	// FIXME: only seen files on src/ are tested, seen files in subfolders are not
+	// FIXME: workaround: any files that is not a seen file will be copied to the dest directory under the same subfolders
+	//			this will allow seen to use rust modules which will help in bootsrapping the compiler
+	fn src_paths(
+		transl: &Transl, 
+		home: &PathBuf,
+		proj_name: &String
+	) -> Vec<String> {
+		let mut seen_files = vec![];
+		let src_path = src::src_path(&transl, &home);
+		let src_content = std::fs::read_dir(src_path).expect("expecting src dir");	// FIXME handle error		
+		let build_src_path = build::build_src_path(&transl, &home, &proj_name);
+
+		fs::create_dir_all(&build_src_path).expect("expecting build src dir to be created");		
+
+		for el in src_content {		
+			let el = el.expect("expecting element");
+			if el.file_type().expect("expecting filet ype").is_dir() {
+				let path =  el.path();		
+				cp_dir(&path, &build_src_path, &mut seen_files);
+			} else { 
+				let path =  el.path();			
+				if let Some(ext) = path.extension() {				
+					if ext == "seen" || ext == "س" {	// FIXME: hardcoded
+						seen_files.push(format!("{}", path.display()));
+					} else {
+						let mut to = build_src_path.clone();
+						to.push(format!("{}", path.file_name().expect("expect filename").to_str().expect("expect str")));
+						match std::fs::copy(&path, &to) {
+							Err(e) => eprintln!("src_paths -> copy: {:?} ,  from: {:?},  to: {:?}", e, path, to),
+							_ => ()	// FIXME: console / IDE should show messages of files being copied
+						};
+					}
+				}
+			}
+		}
+		seen_files	
+	}
 }
+
+	//---------------------
+	//   cp_dir
+	//---------------------
+	// FIXME: code here copies any non-seen src code file in the project src dirs to the build dirs, 
+	//			compiler should have more awareness of the files as the project becomes more developed
+	// FIXME: should copy the src dir to bin and recursively compile or copy rather than have the redundant code in src_paths()
+	fn cp_dir(
+		src: &PathBuf,
+		dest: &PathBuf,
+		seen_files: &mut Vec<String>
+	) {
+		let mut dir = dest.clone();
+		dir.push(src.file_name().expect("expecting dir name"));
+
+		fs::create_dir_all(&dir).expect("expecting dir to be created");		
+		for entry in fs::read_dir(src).expect("expecting directory content") {
+			let entry = entry.expect("expecting entry");
+			if entry.file_type().expect("expecting file type").is_dir() {
+				// cp_dir(&entry.path(), &dir.join(entry.file_name()), seen_files);
+				cp_dir(&entry.path(), &dir, seen_files);
+			} else {
+				if let Some(ext) = entry.path().extension() {
+					if ext == "seen" || ext == "س"  {
+						seen_files.push(format!("{}", entry.path().display()));
+					} else {
+						match std::fs::copy(entry.path(), dir.join(entry.file_name())) {
+							Err(e) => eprintln!("cp_dir() : copy : {:?}", e),
+							_ => ()	// FIXME: console / IDE should show messages of files being copied
+						};						
+					}
+				} else {
+					match std::fs::copy(entry.path(), dir.join(entry.file_name())) {
+						Err(e) => eprintln!("cp_dir() : copy : {:?}", e),
+						_ => ()	// FIXME: console / IDE should show messages of files being copied
+					};						
+
+				}
+				
+			}
+		}		
+
+	}
 
 //================
 //   Build
@@ -275,6 +393,9 @@ impl Run {
 		path: Option<PathBuf>,
 		redirect: bool
 	) -> Option<Child> {
+		let mut cli_args : Vec<String> = std::env::args().collect();
+		cli_args.remove(0);
+
 		let home = match path {
 			None => std::env::current_dir().unwrap(),
 			Some(path) => path
@@ -285,7 +406,7 @@ impl Run {
 		let build_path = build::build_path(&transl, &home, &proj_name);
 		let work_dir = format!("{}", build_path.display());
 		Compile::exec(Some(home));
-		Cargo::new().run(&work_dir, redirect)
+		Cargo::new().run(&work_dir, &cli_args, redirect)
 	}	
 }
 

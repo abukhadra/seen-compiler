@@ -96,7 +96,9 @@ impl<'a> Parser<'a>{
 
             let t = self.lookahead();
             // self.indents.push(t);
-            if let Some(decl) = self.maybe_let_decl() {
+            if let Some(decl) = self.maybe_short_import() { // import("..", ...)  <===>   name := import("...", name)
+                self.mod_insert(ModElement::Decl(decl))
+            } else if let Some(decl) = self.maybe_let_decl() {
                 self.mod_insert(ModElement::Decl(decl));
             } else if let Some(e) = self.maybe_lambda_or_decl(&attrs) {
                 match e {
@@ -106,12 +108,12 @@ impl<'a> Parser<'a>{
                 
             } else if self.expect_id() {
                 let id = self.next();
-                if let Some(_fn) = self.maybe_fn(Some(&id), &attrs) {
+                if let Some(_fn) = self.maybe_fn(Some(&id), &attrs, false) {    // TODO instead of passing a boolean to indicate method/func , split it to maybe_fn() / maybe_method() for readability
                     let _ = self.symtab().insert_fn(&_fn);
                     self.mod_insert(ModElement::Fn(_fn));    
                 } else if let Some(e) = self.maybe_struct(&id, &attrs) {
                     self.mod_insert(ModElement::Struct(e));
-                } else if let Some(e) = self.maybe_struct_impl(&id) {
+                } else if let Some(e) = self.maybe_struct_impl(&id, &attrs) {
                     self.mod_insert(ModElement::StructImpl(e));
                 } else if let Some(e) = self.maybe_enum_impl(&id) {
                     self.mod_insert(ModElement::EnumImpl(e));
@@ -245,6 +247,11 @@ impl<'a> Parser<'a>{
             String::from("expecting `in`")
         )
     }
+
+    //---------------------
+    //  expect_caret()
+    //---------------------    
+    fn expect_caret(&mut self) -> bool { expect!(&self, TokenValue::Caret) }
 
     //---------------------
     //  expect_where()
@@ -392,6 +399,11 @@ impl<'a> Parser<'a>{
             String::from("expecting `.`")
         )
     }
+
+    //---------------------
+    //  expect_double_colon()
+    //---------------------    
+    fn expect_double_colon(&mut self) -> bool { expect!(&self, TokenValue::DoubleColon) }    
 
     //---------------------
     //  expect_at()
@@ -753,7 +765,7 @@ impl<'a> Parser<'a>{
             TokenValue::OpenParen, 
             String::from("expecting  args `id(...)` `}}`")
         )
-    }
+    }   
 
     //---------------------
     //  expect_match()
@@ -1005,8 +1017,11 @@ impl<'a> Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn maybe_list_type (&mut self) -> Option<ListType>{
         if !self.expect_open_bracket() { return None }
+        self.next();
         let _type = self.require_type();
         let _type = self.res_to_opt(_type)?;
+        let _close_bracket = self.require_close_bracket();
+        let _ = self.res_to_opt(_close_bracket)?;
         Some(ListType {els_type: Box::new(_type) } )
     }
 }
@@ -2126,6 +2141,7 @@ impl<'a> Parser<'a> {
                 let close_curly = self.require_close_curly()?;
                 return Ok(fields)
             }
+            self.optional_comma();
         }         
     }
 }
@@ -2147,12 +2163,34 @@ impl<'a> Parser<'a> {
 //================
 // maybe_struct_impl()
 //================
+// FIXME: support only one func/method with multiple impl blocks for now.. later on allow an impl block to have multiple funcs/methods
+// FIXME: add to symtab
 impl<'a> Parser<'a> {
     pub fn maybe_struct_impl (
         &mut self,
-        id: &Token
+        id: &Token,
+        attrs: &Option<Vec<Attr>>
     )  -> Option<StructImpl> {
-        None    // TODO
+        if ! self.expect_double_colon() { return None }
+        self.next();
+        let is_method = if self.expect_caret() {
+            self.next();
+            false
+        } else {
+            true
+        };
+        let fn_id = self.maybe_id();
+        let _fn = self.require_fn(fn_id.as_ref(), attrs, is_method);
+        if let Some(_fn) = self.res_to_opt(_fn) {
+            Some(
+                StructImpl {
+                    name: id.clone(),
+                    fns: vec![_fn]
+                }    
+            )    
+        } else {
+            None
+        }
     }
 }
 
@@ -2246,7 +2284,7 @@ impl<'a> Parser<'a> {
 
         match sym {
             Some(TokenValue::ThinArrow) => {
-                match self.maybe_fn(None, attrs) {
+                match self.maybe_fn(None, attrs, false) {
                     Some(_fn) => Some(LambdaOrDecl::Lambda(_fn)),
                     None => None
                 }                        
@@ -2263,13 +2301,25 @@ impl<'a> Parser<'a> {
 }
 
 //================
+// maybe_short_import()
+//================
+impl<'a> Parser<'a> {
+    pub fn maybe_short_import (
+        &mut self,
+    )  -> Option<Decl> {
+        return None;    // FIXME: not implemented
+    }
+}
+
+//================
 // maybe_fn()
 //================
 impl<'a> Parser<'a> {
     pub fn maybe_fn (
         &mut self,
         id: Option<&Token>,
-        attrs: &Option<Vec<Attr>>
+        attrs: &Option<Vec<Attr>>, 
+        is_method: bool
     )  -> Option<Fn> {
         if !self.expect_open_paren() { return None }
         self.symtab().new_scope();
@@ -2289,6 +2339,7 @@ impl<'a> Parser<'a> {
         Some(
             Fn{
                 attrs: attrs.clone(),
+                is_method,
                 name: id.cloned(),
                 params,
                 ret_type,
@@ -2297,6 +2348,23 @@ impl<'a> Parser<'a> {
         )                    
             
     }        
+}
+
+//================
+// require_fn()
+//================
+impl<'a> Parser<'a> {
+    pub fn require_fn(
+        &mut self,
+        id: Option<&Token>,
+        attrs: &Option<Vec<Attr>>,
+        is_method: bool
+    ) -> Result<Fn, Error>{
+        match self.maybe_fn(id, attrs, is_method) {
+            None => Err( error!("expecting function declaration".to_string(), self.lookahead()) ),
+            Some(params) => Ok(params)
+        }
+    }
 }
 
 //================
@@ -2416,7 +2484,7 @@ impl<'a> Parser<'a> {
         if self.is_struct_literal() {
             let t = self.lookahead();
             let expr = Expr::StructLiteral(self.require_struct_lietral()?);
-            self.symtab().exit_scope();
+            // self.symtab().exit_scope();
             return Ok(vec![BlockElement::Expr(expr)])
         } else {
             self.next(); 
@@ -2590,7 +2658,7 @@ impl<'a> Parser<'a> {
         let t = self.res_to_opt(after_close_paren)?;  
         match t.value {
             TokenValue::ThinArrow => {
-                self.maybe_fn(None, attrs) 
+                self.maybe_fn(None, attrs, false) 
             },
             _ => None
         }

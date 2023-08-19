@@ -41,10 +41,20 @@ pub struct Transl {
     deps: Text,
     id: Text,
     prebuild: Text,
+    rust: Text,
+    rs: Text,
     python: Text,
+    py: Text,
     missing_conf_err: Text,
 
-    // conf.seen -> Python
+    // conf.seen -> rust
+    features: Text,
+    f: Text,
+    version: Text, 
+    v: Text,
+    
+
+    // conf.seen -> python
     py_path: Text,
     pkg_man: Text, 
 
@@ -99,11 +109,19 @@ impl Transl {
             deps:               Text::new(      "تبعيات",                     "deps"                          ),
             id:                 Text::new(      "معرف",                       "id"                            ),
             prebuild:           Text::new(      "قبل_البناء",                 "prebuild"                      ),
+            rust:               Text::new(      "رست",                        "rust"                          ),            
+            rs:                 Text::new(      "رست",                        "rs"                            ),            
             python:             Text::new(      "بايثون",                     "python"                        ),
+            py:                 Text::new(      "بايثون",                     "py"                            ),
             missing_conf_err:   Text::new(      MISSING_CONF_ERR_AR,          MISSING_CONF_ERR_EN             ),
 
-            // conf.seen -> python
+            // conf.seen -> rust
+            features:           Text::new(      "سمات",                       "features"                      ),
+            f:                  Text::new(      "سمات",                       "f"                             ),        // FIXME: using f, while it's actually features, should it be feats? 
+            version:            Text::new(      "اصدار",                      "version"                       ),
+            v:                  Text::new(      "اصدار",                      "v"                             ),
 
+            // conf.seen -> python
             py_path:            Text::new(      "مسار_بايثون",               "py_path"                        ),
             pkg_man:            Text::new(      "مدير_الحزم",                "pkg_man"                        ),
 
@@ -238,9 +256,24 @@ impl Transl {
     pub fn prebuild(&self) -> String { self.to_str(&self.prebuild) }         
 
     //---------------------
+    //  rust()
+    //--------------------- 
+    pub fn rust(&self) -> String { self.to_str(&self.rust) }     
+
+    //---------------------
+    //  rs()
+    //--------------------- 
+    pub fn rs(&self) -> String { self.to_str(&self.rs) }     
+
+    //---------------------
     //  python()
     //--------------------- 
     pub fn python(&self) -> String { self.to_str(&self.python) }     
+
+    //---------------------
+    //  py()
+    //--------------------- 
+    pub fn py(&self) -> String { self.to_str(&self.py) }     
 
     //---------------------
     //  missing_conf_err()
@@ -259,6 +292,36 @@ impl Transl {
 
 
 }
+
+
+//================
+//   Transl
+//  conf.seen ->
+//    Rust 
+//================
+impl Transl {
+
+    //---------------------
+    //  features()
+    //--------------------- 
+    pub fn features(&self) -> String { self.to_str(&self.features) }   
+
+    //---------------------
+    //  f()
+    //--------------------- 
+    pub fn f(&self) -> String { self.to_str(&self.f) }   
+
+    //---------------------
+    //  version()
+    //--------------------- 
+    pub fn version(&self) -> String { self.to_str(&self.version) }       
+
+    //---------------------
+    //  v()
+    //--------------------- 
+    pub fn v(&self) -> String { self.to_str(&self.v) }           
+}
+
 
 //================
 //   Transl

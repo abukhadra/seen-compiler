@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt::Debug
+    fmt::{ self, Debug }
 };
 
 use crate::lang::token::{Token, TokenValue};
@@ -8,6 +8,7 @@ use crate::lang::token::{Token, TokenValue};
 //================
 //   Aliases
 //================
+// FIXME: replace HashMaps with Vec<(T,E)> with lookup ( or use an ordered_hashmap implementation ), to preserve the order
 pub type StructFieldsTypes = HashMap<Token, Option<Type>>;
 pub type StructFields = HashMap<Token, Type>;
 pub type StructPatternFields = HashMap<Token, Option<Pattern>>;
@@ -50,6 +51,7 @@ pub struct Tuple {
 pub struct StructLiteral {
     pub items: StructLiteralFields
 }
+
 
 //================
 //   Decl
@@ -100,6 +102,7 @@ pub enum Expr {
 //================
 #[derive(Clone, Debug)]
 pub enum BlockElement {
+    MainArgs,   // FIXME: this is a workaround, main args are nothing but a Decl
     Decl(Decl),
     Expr(Expr)
 }
@@ -139,6 +142,7 @@ impl BinOp {
 #[derive(Clone, Debug)]
 pub struct Fn {
     pub attrs: Option<Vec<Attr>>,
+    pub is_method: bool,
     pub name: Option<Token>,
     pub params: Vec<Param>,
     pub ret_type: Option<Type>,
@@ -170,6 +174,29 @@ pub enum Type{
 }
 
 //================
+//   Display Type
+//================
+impl fmt::Display for Type {
+    //---------------------
+    //  fmt()
+    //---------------------      
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Type::OptionType(t) => todo!(),
+            Type::ResultType(t) => todo!(),
+            Type::UnitType => write!(f, "()"),
+            Type::PrimitiveType(t) => write!(f, "{}", t.id),
+            Type::ListType(t) => todo!(),
+            Type::TupleType(t) => todo!(),
+            Type::StructType(t) => todo!(),
+        }
+        
+    }
+}
+
+
+
+//================
 //   OptionType
 //================
 #[derive(Clone, Debug)]
@@ -193,6 +220,7 @@ pub struct ResultType {
 pub struct PrimitiveType {
     pub id: Token,
 }
+ 
 
 //================
 //   ListType
@@ -236,7 +264,7 @@ pub struct Struct{
 #[derive(Debug)]
 pub struct StructImpl{
     pub name: Token,
-    pub fns: Vec<Fn>
+    pub fns: Vec<Fn>,
 }
 
 //================

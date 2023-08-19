@@ -50,7 +50,11 @@ pub struct Rust<'a> {
     res: String,
     html: Option<Html>,
     proj_dir : &'a mut BuildDir,
-    cargo_toml : &'a mut CargoToml
+    cargo_toml : &'a mut CargoToml,
+    imports: Vec<String>         // FIXME: vector of imported modules... used as a workaround for not having a resolver / semantic analyzer
+                                //          for now , we are supporint  module name ( single token ) imports
+                                //          during code generation, a reference will be checked if it exists in this vector, if it does , then we will use :: rather than . to access elements
+                                //          later on, the resolver / semantic analyzer should eliminate the need for this workaround
 }
 
 impl <'a> Rust<'a> {
@@ -68,7 +72,8 @@ impl <'a> Rust<'a> {
             res: String::new(),
             html: None,
             proj_dir: project_struct,
-            cargo_toml
+            cargo_toml,
+            imports: vec![]
         }
     }
 
@@ -77,12 +82,17 @@ impl <'a> Rust<'a> {
     //---------------------
     pub fn generate(
         &mut self,
-        path: String,
-        src_lang: Lang, //&str,
-        ast: Vec<ModElement>
+        mut file_name: String,
+        path: &String,
+        src_lang: &Lang, //&str,
+        ast: &mut Vec<ModElement>,
+        main_mods: &Vec<String>
     ) {
 
-        self.src_lang = src_lang;
+        let _ = writeln!(self.res, "#![allow(warnings)]\n");
+
+
+        self.src_lang = src_lang.clone();
         self.path = path.clone();
         self.html = Some(Html::new(
             &self.src_lang,
@@ -90,10 +100,11 @@ impl <'a> Rust<'a> {
             self.src_lang.ext()
         ));
 
-        for el in ast {
+        for el in ast.iter() {
             match el {
-                ModElement::Decl(el) => self.asgmt(el),
-                ModElement::MainFn(el) => self.main_fn(el),
+                // ModElement::Decl(el) => self.asgmt(el),
+                ModElement::Decl(el) => self.decl(&el),
+                ModElement::MainFn(el) => self.main_fn(el, main_mods),
                 ModElement::Fn(el) => self._fn(el),
                 ModElement::Struct(el) =>  self._struct(el),
                 ModElement::StructImpl(el) => self.struct_impl(el),
@@ -102,7 +113,13 @@ impl <'a> Rust<'a> {
                 ModElement::EnumImpl(el) => self.enum_impl(el),                
             }
         }
-        match fs::write(&self.proj_dir.src.main, &self.res){
+        // match fs::write(&self.proj_dir.src.main, &self.res){
+        let mut path_buf = self.proj_dir.src.path.clone();
+        if file_name == "رئيسي" { file_name = "main".to_string() }  // FIXME use enums instead of strings
+        
+        path_buf.push(file_name);
+        path_buf.set_extension("rs");
+        match fs::write(&path_buf, &self.res){
             Err(err) => panic!("{:?}", err),
             Ok(_) => ()
         }            
@@ -110,17 +127,17 @@ impl <'a> Rust<'a> {
     }
 }
 
-//================
-//   asgmt()
-//================
-impl <'a> Rust<'a> {
-    fn asgmt(
-        &mut self, 
-        asgmt: Decl 
-    ) {
-        todo!();    // TODO
-    }
-}
+// //================
+// //   asgmt()
+// //================
+// impl <'a> Rust<'a> {
+//     fn asgmt(
+//         &mut self, 
+//         asgmt: Decl 
+//     ) {
+//         todo!();    // TODO
+//     }
+// }
     
 //================
 //   main_fn()
@@ -128,18 +145,87 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn main_fn(
         &mut self,
-        _fn: Fn,
+        mut _fn: &Fn,
+        main_mods: &Vec<String>
     ) {
         if self.is_attr("web_server", &_fn.attrs) || self.is_attr("مخدم_شع", &_fn.attrs) {     // FIXME hardcoding @web_server for the demo
-            self.web_server_main(_fn.block, &_fn.attrs);
+            self.web_server_main(&_fn.block, &_fn.attrs);
          } else {
-            let _ = write!(self.res, "fn main");
-            self.fn_params(_fn.params);
-            self.fn_body(_fn.block, &_fn.attrs);
+            let _ = writeln!(self.res);
+            for _mod in main_mods {
+                let _ = writeln!(self.res, "mod {};", _mod);    
+            }
+            let _ = writeln!(self.res);
+            let _ = write!(self.res, "fn main()");
+            if self.fn_main_has_params(&_fn.params) {    // TODO: main with params is not tested
+                // _fn.block.insert(0, BlockElement::MainArgs); // FIXME: if args are passed and used, then should add args at the beginning of the main function 
+            }
+            self.fn_body(&_fn.block, &_fn.attrs);
             let _ = writeln!(self.res);
         }
     }
 }
+
+//================
+//   fn_main_has_params()
+//================
+impl <'a> Rust<'a> {
+    fn fn_main_has_params(
+        &mut self,
+        params: &Vec<Param>,
+    ) -> bool {
+        // FIXME: currently, supporting only (args: [str]) -> ... , should be able to deconstruct using patterns
+        for param in params {
+            if is_main_param_pat_id(&param.pat) == is_main_param_list_str(&param._type) {
+                return true
+            } else {
+                return false
+            }
+        }
+        false
+    }
+
+}
+
+//================
+//   is_main_param_pat_id()
+//================
+fn is_main_param_pat_id(pat: &Pattern) -> bool {
+    match pat  {
+        Pattern::Id(_) => true,
+        _ => false
+    }
+}
+
+//================
+//   is_main_param_list_str()
+//================
+fn is_main_param_list_str(_type: &Option<Type>) -> bool {
+    match _type  {
+        Some(
+            Type::ListType(
+                ListType{ 
+                    els_type: els_type
+                }
+            )
+        ) => {
+            let els_type = *els_type.clone();
+            match els_type {
+                Type::PrimitiveType(
+                    PrimitiveType{
+                        id: Token { 
+                            value: TokenValue::Id(v), 
+                            .. 
+                        }
+                    }
+                ) if v == "str "=> true,
+                _ => false
+            }    
+        },
+        _ => false
+    }
+}
+
 
 //================
 //   _fn()
@@ -147,22 +233,22 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {  
     fn _fn(
         &mut self,
-        _fn: Fn,  
+        _fn: &Fn,  
     ) {
         
-        let name = if let Some(name) = _fn.name {
-            match name.value {
-                TokenValue::Id(id) => id,
+        let name = if let Some(name) = &_fn.name {
+            match &name.value {
+                TokenValue::Id(id) => id.to_owned(),
                 _ => panic!()
             }
         } else {
             String::from("")
         }; 
 
-        let _ = write!(self.res, "fn {}", name);
-        self.fn_params(_fn.params);
-        self.fn_ret_type(_fn.ret_type);
-        self.fn_body(_fn.block, &_fn.attrs);
+        let _ = write!(self.res, "{}pub fn {}",self.indent , name);     // FIXME: for now, all impl block members are going to be public, change code to make them public as needed
+        self.fn_params(&_fn.params, _fn.is_method);
+        self.fn_ret_type(&_fn.ret_type);
+        self.fn_body(&_fn.block, &_fn.attrs);
         let _ = writeln!(self.res);
     }
 }
@@ -174,9 +260,14 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn fn_params(
         &mut self,
-        params: Vec<Param>,
+        params: &Vec<Param>,
+        is_method: bool
     ) {
         let _ = write!(self.res, "(");  
+        if is_method {
+            let _ = write!(self.res, "&mut self, ");        // FIXME assuming everything is a &mut , fix to accomdate all cases incuding &self, self 
+                                                            //          also , do not print comma if we have 0 params
+        }   
         for (i, param) in params.iter().enumerate() {
             match &param._type {
                 None => todo!("type inference"),
@@ -205,10 +296,11 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn fn_ret_type(
         &mut self,
-        ret_type: Option<Type>,
+        ret_type: &Option<Type>,
     ) {
         match ret_type {
-            None => panic!("bug, should not pass the type checker"),
+            // None => panic!("bug, should not pass the type checker"),
+            None => (),
             Some(Type::UnitType) => (),
             Some(_type) => {
                 let _ = write!(self.res, " -> ");
@@ -226,14 +318,15 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn web_server_main(
         &mut self,
-        els: Vec<BlockElement>,
+        els: &Vec<BlockElement>,
         attrs: &Option<Vec<Attr>>
     ) {
     
         for el in els {
             match el {
                 BlockElement::Expr(Expr::Ret(v)) => {
-                    match *v {
+                    let v = &**v;
+                    match v {
                         Expr::StructLiteral(data) => {
                             // FIXME just a quick hack to demo the project, in the real app, the attributes will alter the ast 
                             if self.is_attr("web_server", attrs) || self.is_attr("مخدم_شع", attrs){
@@ -257,7 +350,7 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn fn_body(
         &mut self,
-        els: Vec<BlockElement>,
+        els: &Vec<BlockElement>,
         attrs: &Option<Vec<Attr>>
     ) {
         let _ = writeln!(self.res, "{{");    
@@ -265,9 +358,15 @@ impl <'a> Rust<'a> {
         for el in els {
             let _ = write!(self.res, "{}", self.indent);    
             match el {
-                BlockElement::Expr(Expr::BinOp(op)) => {
-                    if let Some((name, args)) = &self.maybe_fn_call(&op, attrs) {
+                BlockElement::Expr(Expr::BinOp(bin_op)) => {
+
+
+                    if let Some((name, args)) = &self.maybe_fn_call(&bin_op, attrs) {   
                         self.temp_std(name, args); 
+                    } else if self.is_imported_module(&bin_op.l_opr) {   // FIXME this is a workaround , for now only importing modules in same dir are supported, `use` can be much more complex , handle all scenarios
+                        self.fix_import_path(&bin_op);
+                    }else {
+                        todo!("todo: unsupported element: {:#?}", bin_op);
                     }
                     let _ = writeln!(self.res, ";");
                 },
@@ -398,26 +497,128 @@ impl <'a> Rust<'a> {
 
 
 //================
+//   maybe_struct_init()
+//================
+impl <'a> Rust<'a> {
+    fn maybe_struct_init(
+        &mut self,
+        op: &BinOp,
+        attrs: &Option<Vec<Attr>>
+    ) -> Option<(String, StructLiteral)> {                                  
+
+        match &*op.l_opr {
+            Expr::Ref(t) => {
+                let name = t.to_string();
+
+                match &*op.r_opr {
+                    Expr::StructLiteral(fields) => {
+                        
+                        return Some((name, fields.clone())) 
+                    },
+                    x => {
+                        None
+                    }
+                }
+            },
+            _ => None
+        }
+    }
+}
+
+
+//================
+//  struct_init()
+//================  
+// TODO: support multiple formats / indentation according to the number of fields and context
+//  e.g:
+//          let x = Struct{ a: int}
+//          let x = Struct {
+//                  a: 1,
+//                  b: 2
+//          }
+// ...etc
+impl <'a> Rust<'a> {     
+    pub fn struct_init(
+        &mut self, 
+        name: &String, 
+        fields: &StructLiteral
+    ) {
+        let _ = writeln!(self.res, "{} {{", name);
+        self.indent.inc();
+        for (name, expr) in fields.items.iter() {
+            let _ = write!(self.res, "{}", self.indent);
+            let expr = expr.clone().expect("optional values are not supported yet"); // FIXME : if value is absent then assign default
+            let _ = write!(self.res, "{}: ", name);
+            self.expr(&expr);
+            let _ = writeln!(self.res, ",");
+        };
+
+        self.indent.dec();
+        let _ = write!(self.res, "{}}}", self.indent);  
+    
+    }
+}
+
+
+//================
 //   _struct()
 //================
 impl <'a> Rust<'a> {
     fn _struct(
         &mut self,
-        _struct: Struct,
+        _struct: &Struct,
     ) {
-        todo!();    // TODO
+        let _  = writeln!(self.res, "#[derive(Debug, Clone)]"); // FIXME : add Debug/Clone by default for DEV , improve later by adding them as needed
+        let _  = writeln!(self.res, "struct {} {{" , _struct.name); 
+        if let Some(fields) = &_struct.fields {
+            self.indent.inc();
+            for (name, _type) in fields.iter() {
+                let _ = write!(self.res, "{}", self.indent);
+                let _ = write!(self.res, "pub {}: ", name );    // FIXME: by default all structs are pub, later on introduce -/+ to restrict
+                self._type(_type);
+                let _ = writeln!(self.res, ",");
+
+            }
+            self.indent.dec();
+            let _ = writeln!(self.res, "{}}}\n", self.indent);
+        } else {
+            let _ = writeln!(self.res, "}}\n");
+        }
+
+        // FIXME: for quicker DEV: implement Display for every struct by default to print the Debug impl
+        //          improve later
+        let _ = writeln!( self.res, "{}impl std::fmt::Display for {} {{", self.indent, _struct.name);
+        self.indent.inc();
+        let _ = writeln!( self.res, "{}fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{", self.indent);
+        self.indent.inc();
+        let _ = writeln!( self.res, "{}write!(f, \"{{:#?}}\", self)", self.indent);
+        self.indent.dec();
+        let _ = writeln!(self.res, "{}}}", self.indent);
+        self.indent.dec();
+        let _ = writeln!(self.res, "{}}}\n", self.indent);
+                
     }
 }
 
 //================
 //   struct_impl()
 //================
+// FIXME: code is assuming a single method/func impl blocks, later on when parser is updated for multi support, change the code here as well.
 impl <'a> Rust<'a> {
     fn struct_impl(
         &mut self,
-        struct_impl: StructImpl,
+        struct_impl: &StructImpl,
     ) {
-        todo!();    // TODO
+        let _ = writeln!( self.res, "{}impl {} {{", self.indent, struct_impl.name);
+        self.indent.inc();
+
+        for _fn in &struct_impl.fns {
+            self._fn(_fn);
+        }
+
+        self.indent.dec();
+        let _ = writeln!(self.res, "{}}}\n\n", self.indent);
+
     }
 }
 
@@ -427,7 +628,7 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn _trait(
         &mut self,
-        _trait: Trait,
+        _trait: &Trait,
     ) {
         todo!();    // TODO
     }
@@ -439,7 +640,7 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn _enum(
         &mut self,
-        _enum: Enum,
+        _enum: &Enum,
     ) {
         todo!();    // TODO
     }
@@ -451,7 +652,7 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn enum_impl(
         &mut self,
-        enum_impl: EnumImpl,
+        enum_impl: &EnumImpl,
     ) {
         todo!();    // TODO
     }
@@ -680,13 +881,32 @@ impl <'a> Rust<'a> {
         &mut self, 
         bin_op: &BinOp
     ) {
-        if let Some((name, args)) = &self.maybe_fn_call(&bin_op, &None) {
+        
+        if self.is_imported_module(&bin_op.l_opr) {   // FIXME this is a workaround , for now only importing modules in same dir are supported, `use` can be much more complex , handle all scenarios
+            self.fix_import_path(&bin_op);
+        } else if let Some((name, args)) = &self.maybe_fn_call(&bin_op, &None) {
             self.temp_std(name, args); 
-        } else {
+        } else if let Some((name, fields)) = &self.maybe_struct_init(&bin_op, &None) {
+            self.struct_init(name, fields); 
+        } else {    
             self.expr(&bin_op.l_opr);
             self.rs_bin_op(&bin_op.op);
             self.expr(&bin_op.r_opr);
         }
+    }
+}
+
+//================
+//  fix_import_path()
+//================  
+impl <'a> Rust<'a> {     
+    fn fix_import_path(
+        &mut self,
+        bin_op: &BinOp
+    ) {
+        self.expr(&bin_op.l_opr);
+        let _ = write!(self.res, "::");
+        self.expr(&bin_op.r_opr);
     }
 }
 
@@ -700,12 +920,10 @@ impl <'a> Rust<'a> {
         args: &Tuple
     ) {
         match name.as_str() {
-            "اطبع_سطر" => self.println(args),
-            "اطبع" => self.print(args),
-            "println" => self.println(args),
-            "print" => self.print(args),
-            "web_view" => self.web_view(args),
-            "مخدم_شع" => self.web_view(args),
+            // "احضر"          | "import"      => self.import(args),    // FIXME: this is hardcoded and handled inside declare for the moment
+            "اطبع_سطر"      | "println"     => self.println(args),
+            "اطبع"          | "print"       => self.print(args),
+            "مخدم_شع"       | "web_view"    => self.web_view(args),
             "mobile_view" => self.mobile_view(args),
             "gui_view" => self.gui_view(args),
             // _ => panic!("could not resolve: `{}`", name)
@@ -726,6 +944,63 @@ impl <'a> Rust<'a> {
     ) { 
         let _ = write!(self.res, "{}", name); 
         self.tuple(args);
+    }
+}
+//================
+//  import()
+//================  
+// FIXME: hardcoded: assuming that we have one argument passed to import(), that will either represent a file.rs or a file.seen / .س
+//          that exists in the same directory as main.seen
+impl <'a> Rust<'a> {   
+    pub fn import(
+        &mut self,
+        pattern: &Pattern,
+        args: &Tuple
+    ) { 
+
+        let _mod = &args.items[0];   // FIXME hardcoded / no error handling
+        let _mod = format!("{}", _mod);
+ 
+        // FIXME : Hardcoded extensions, 
+        // FIXME : what if the seen file is not transpiled to rust?         
+        let _mod = if str::ends_with(&_mod, ".rs") { 
+            _mod.strip_suffix(".rs").unwrap()
+        } else if str::ends_with(&_mod, ".seen") {
+            _mod.strip_suffix(".seen").unwrap()
+        } else if str::ends_with(&_mod, ".س")  {    
+            _mod.strip_suffix(".س").unwrap()
+        } else {    // FIXME: other cases such as images, other pls ...etc are not covered. assuming a filename without extension ( also a seen file)
+            _mod.as_str()
+        };
+
+        
+
+        let _ = writeln!(self.res, "#[path = \"{}.rs\"]", _mod);
+        if let Pattern::Id(id_pat) = pattern {
+            self.imports.push(id_pat.id.to_string());
+            let _ = writeln!(self.res, "mod {};", id_pat.id);    
+        } else {
+            todo!("other patterns are not supported yet");  // FIXME
+        }
+        
+
+    }
+}
+
+//================
+//  is_import_module()
+//================  
+impl <'a> Rust<'a> {   
+    pub fn is_imported_module(
+        &mut self,
+        expr: &Expr,
+    ) -> bool { 
+        match expr {
+            Expr::Ref(_ref) => {
+                return self.imports.contains(&_ref.value.to_string());
+            }
+            _ => todo!("currently, only Id Pattern is supported") // FIXME
+        }
     }
 }
 
@@ -1004,11 +1279,25 @@ impl <'a> Rust<'a> {
         el: &BlockElement,
     ) { 
         match el {
+            BlockElement::MainArgs => {
+                self.main_args()
+            }
             BlockElement::Decl(decl) => {
                 self.decl(&decl);
             },
             BlockElement::Expr(expr) => self.expr(&expr)
         }
+    }
+}
+
+//================
+//  main_args()
+//================  
+impl <'a> Rust<'a> {   
+    pub fn main_args(
+        &mut self,
+    ) { 
+        let _ = writeln!(self.res, "let args: Vec<String> = std::env::args().collect();");         
     }
 }
 
@@ -1021,21 +1310,53 @@ impl <'a> Rust<'a> {
         decl: &Decl
 
     ) { 
-        let _ = write!(self.res, "let ");         
-        self.pattern(&decl.pattern);
-        match &decl._type {
-            None => (),
-            Some(_type) => self.type_annotation(&_type)
+        if self.expect_import(decl) {
+            if let Some(Expr::BinOp(bin_op)) = &decl.expr {
+                if let Expr::Tuple(args) = &*bin_op.r_opr {
+                    self.import( &decl.pattern ,&args);
+                }
+            }
+        } else {
+            let _ = write!(self.res, "let ");         
+            let _ = write!(self.res, "mut ");    // FIXME, for now everything will be treated as mut
+            self.pattern(&decl.pattern);
+            match &decl._type {
+                None => (),
+                Some(_type) => self.type_annotation(&_type)
+            }
+            
+            if let Some(expr) = &decl.expr {
+                let _ = write!(self.res, " = ");
+                self.expr(&expr);    
+            }
+            let _ = write!(self.res, ";");
         }
-        
-        if let Some(expr) = &decl.expr {
-            let _ = write!(self.res, " = ");
-            self.expr(&expr);    
-        }
-        let _ = write!(self.res, ";");
     }
 }
 
+//================
+//  expect_import()
+//================  
+impl <'a> Rust<'a> {   
+    pub fn expect_import(
+        &mut self,
+        decl: &Decl
+    ) -> bool { 
+        // FIXME: quick workaround, check if import func call is next and handle it as an import 
+        //  this is more like hardcoding, what if we have more complex calls like this?
+        //          io := filter(import("std"), {io})
+        if let Some(Expr::BinOp(bin_op)) = &decl.expr {
+            if let expr = &*bin_op.l_opr {
+                if let Expr::Ref(t) = expr {
+                    if t.value.to_string() == "import" || t.value.to_string() == "احضر" { // FIXME: hardcoded translations, should use enums instead
+                        return true;
+                    }
+                }
+            }
+        }
+        false    
+    }
+}
 
 //================
 //  web_server()

@@ -20,14 +20,13 @@ use crate::lang::{
 fn fib_ar() {	
 	type_check_en( indoc!{"
     ق(ن) ->
-	طابق ن
+	طابق ن {
 		٠ => ٠
 		١ => ١
 		ن => ق(ن-١) + ق(ن-٢)
-	اهــ
-اهــ
+    }
 
-()-> اطبع_سطر(ق(٣))   
+    ()-> اطبع_سطر(ق(٣))   
     "});
 }
 
@@ -38,12 +37,11 @@ fn fib_ar() {
 fn fib_en() {	
 	type_check_en( indoc!{"
     fib(n) ->
-        match n
+        match n {
             0 => 0
             1 => 1
             n => fib(n-1) + fib(n-2) 
-        end
-    end
+        }
     () -> println(fib(3))   
     "});
 }

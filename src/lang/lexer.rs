@@ -169,6 +169,7 @@ impl<'a> Lexer<'a> {
 
             '\u{1EE4D}' => self.add_token(TokenValue::Res),
             '⎔' => self.add_token(TokenValue::At),
+            '؛' => self.add_token(TokenValue::Semicolon),
             '⏎' => self.add_token(TokenValue::Ret),
             '✓' => self.add_token(TokenValue::Ok),
             '✗' => self.add_token(TokenValue::Err),
@@ -538,17 +539,19 @@ impl<'a> Lexer<'a> {
             }
 
             if self.expect_eol() {
-                self.insert_error(format!(
-                    "unclosed {} literal, expecting {} ",
-                    if symbol == '"' || symbol == '«'{
-                        "String"
-                    } else if symbol == '\'' || symbol == '‹' {
-                        "Character"
-                    } else {
-                        panic!("enclosed_value(): unexpected literal symbol!");
-                    },
-                    symbol
-                ));
+                self.insert_error(
+                    format!(
+                        "unclosed {} literal, expecting {} ",
+                            if symbol == '"' || symbol == '«'{
+                                "String"
+                            } else if symbol == '\'' || symbol == '‹' {
+                                "Character"
+                            } else {
+                                panic!("enclosed_value(): unexpected literal symbol!")
+                            },
+                        symbol
+                    )
+                );
                 break;
             }
 
@@ -887,6 +890,7 @@ impl<'a> Lexer<'a> {
             "بينما" => self.add_token(TokenValue::While),
             "اذا" => self.add_token(TokenValue::If),
             "والا" => self.add_token(TokenValue::Else),
+            // "احضر" => self.add_token(TokenValue::Use),
             "_" => self.add_token(TokenValue::Underscore),
             _ => self.add_token(TokenValue::Id(v)),
         }
@@ -962,6 +966,10 @@ impl<'a> Lexer<'a> {
             '=' => {
                 self.skip(1);
                 self.add_token(TokenValue::DeclAsign);    
+            }
+            ':' => {
+                self.skip(1);
+                self.add_token(TokenValue::DoubleColon);
             }
             _ => self.add_token(TokenValue::Colon)
         } 

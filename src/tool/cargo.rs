@@ -56,11 +56,19 @@ impl Cargo {
     pub fn run(
         &self,
         work_dir: &String,
+        cli_args: &Vec<String>,
         redirect: bool
     ) -> Option<Child> {
+        let mut args = vec!["run", "--"];
+        for arg in cli_args {
+            args.push(arg.as_str());
+        }
+
+        let args = ["run"];     // FIXME: try comment this line out and run the bootsrap-seen-compiler project, it will give an error
+                                //    for now pass only "run" as an arg and fix the cargo run -- [cli_args]  later
         self.spawn(
             "cargo",
-            &["run"],
+            &args,  
             work_dir,
             redirect
         )

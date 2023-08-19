@@ -8,6 +8,18 @@ use std::{
 
 use crate::transl::transl::Transl;
 
+//================
+//   src_path()
+//================
+pub fn src_path(
+    transl: &Transl,
+	home: &PathBuf
+) -> String {
+	let mut src_path = home.clone();
+	src_path.push(transl.src());
+	format!("{}", src_path.display())    
+}
+
 
 //================
 //   main_src()

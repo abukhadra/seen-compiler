@@ -14,9 +14,7 @@ use util::cli::*;
 //   main()
 //================
 fn main() {
-
     env_logger::init();	// RUST_LOG=debug
-
 	let cli = Cli::new();
 	
 	match cli.command {

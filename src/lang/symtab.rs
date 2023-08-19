@@ -60,7 +60,6 @@ impl SymTab {
         self.scopes.push(scope);
         self.enter_scope(id);
 
-
         id
     }
 

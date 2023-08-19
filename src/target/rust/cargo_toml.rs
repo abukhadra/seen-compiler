@@ -1,13 +1,12 @@
 use std::{
     fs,
     path::PathBuf,
-    fmt::{
-        Write,
-    }
+    fmt::Write,
 };
 
-use crate::util::{
-    indent::Indent    
+use crate::{
+    util::indent::Indent, 
+    lang::{syntax_tree::ast::{self, ModElement}, compiler::Data}, project::conf::{SeenDep, Conf, ConfElement}
 };
 
 use super::rs_crate::Crate;
@@ -27,6 +26,22 @@ pub struct Package {
     pub edition: String    
 }
 
+impl Package {
+    //---------------------
+    //  new()
+    //---------------------        
+    pub fn write(
+        &mut self,
+        res: &mut String
+    ) {
+        let _ = writeln!(res, "[package]");
+        let _ = writeln!(res, "name = \"{}\"", self.name);
+        let _ = writeln!(res, "version = \"{}\"", self.version);
+        let _ = writeln!(res, "edition = \"{}\"", self.edition);
+        let _ = writeln!(res, "\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n");        
+    }
+}
+
 
 //================
 //  bin
@@ -34,6 +49,21 @@ pub struct Package {
 pub struct Bin {
     pub name: String, 
     pub path: String,
+}
+
+impl Bin {
+    //---------------------
+    //  new()
+    //---------------------       
+    pub fn write(
+        &mut self,
+        res: &mut String
+    ) {
+        let _ = writeln!(res, "[[bin]]");
+        let _ = writeln!(res, "name = \"{}\"", self.name);
+        let _ = writeln!(res, "path = \"{}\"", self.path);
+        let _ = writeln!(res, "");        
+    }
 }
 
 //================
@@ -46,6 +76,9 @@ pub struct ProfileRls {
 }
 
 impl ProfileRls {
+    //---------------------
+    //  new()
+    //---------------------        
     pub fn write(
         &mut self,
         res: &mut String
@@ -59,11 +92,57 @@ impl ProfileRls {
 
 
 //================
+//  Deps
+//================  
+#[derive(Debug)]
+pub struct Deps {
+    items: Vec<Dep>
+}
+
+impl Deps {
+    //---------------------
+    //  new()
+    //---------------------        
+    pub fn write(
+        &mut self,
+        res: &mut String
+    ) {
+        let _ = writeln!(res, "[dependencies]");
+        for dep in self.items.iter_mut() {
+            dep.write(res);
+        }
+
+    }
+}
+
+//================
 //  Dep
 //================  
+#[derive(Debug)]
 pub struct Dep {
     pub id: String, 
-    pub version: String    
+    pub version: String,
+    pub features: Option<ast::List>
+}
+
+impl Dep {
+    //---------------------
+    //  new()
+    //---------------------        
+    pub fn write(
+        &mut self,
+        res: &mut String
+    ) {
+        if let Some(features) = &self.features {
+            let _ = write!(res, "{} = {{ version = \"{}\", features = [", self.id, self.version);        
+            for feature in features.items.iter() {
+                let _ = write!(res, "\"{}\", ", feature);    
+            }
+            let _ = writeln!(res, "] }}");
+        } else {
+            let _ = writeln!(res, "{} = \"{}\"", self.id, self.version);        
+        }
+    }
 }
 
 //================
@@ -74,7 +153,7 @@ pub struct CargoToml {
     pub package: Package,
     pub bin: Bin,
     pub profile_rls: ProfileRls,
-    pub deps: Vec<Dep>,
+    pub deps: Deps,
     indent: Indent,
     res: String    
 }
@@ -86,7 +165,26 @@ impl CargoToml {
     pub fn new(
         name: &str,
         path: &PathBuf,    
+        seen_conf: &Conf
     ) -> Self {
+       
+        let mut deps = Deps { items: vec![]};
+        for el in seen_conf.data.iter() {
+            match el {
+                ConfElement::Rust(rs) => {
+                    for rs_dep in rs.deps.iter() {
+                        let dep = Dep{ 
+                            id: rs_dep.id.clone(),
+                            version: rs_dep.ver.clone(),
+                            features: rs_dep.features.clone()
+                        };
+                        deps.items.push(dep);
+                    }
+                },
+                _ => ()
+            }
+        }
+
         Self {
             path: path.clone(),
             package: Package {   // FIXME hardcoded
@@ -103,7 +201,7 @@ impl CargoToml {
                 opt_level: "1".to_string(), 
                 strip: "true".to_string() 
             },
-            deps: vec![],
+            deps,
             indent: Indent::new(),
             res: String::new()
         }
@@ -116,10 +214,11 @@ impl CargoToml {
         &mut self,
         _crate: impl Crate
     )  {
-        self.deps.push(
+        self.deps.items.push(
             Dep { 
                 id: _crate.id().clone(), 
-                version: _crate.version().clone()
+                version: _crate.version().clone(),
+                features: _crate.features().clone()
             }
         );
     }
@@ -131,26 +230,15 @@ impl CargoToml {
 //================  
 impl CargoToml {
     pub fn generate(&mut self) {
-        let _ = writeln!(self.res, "[package]");
-        let _ = writeln!(self.res, "name = \"{}\"", self.package.name);
-        let _ = writeln!(self.res, "version = \"{}\"", self.package.version);
-        let _ = writeln!(self.res, "edition = \"{}\"", self.package.edition);
-        let _ = writeln!(self.res, "\n# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html\n");
+        self.package.write(&mut self.res);
 
-        let _ = writeln!(self.res, "[[bin]]");
-        let _ = writeln!(self.res, "name = \"{}\"", self.bin.name);
-        let _ = writeln!(self.res, "path = \"{}\"", self.bin.path);
-        let _ = writeln!(self.res, "");
+        self.bin.write(&mut self.res);
 
         self.profile_rls.write(&mut self.res);
 
         let _ = writeln!(self.res, "");
     
-
-        let _ = writeln!(self.res, "[dependencies]");
-        for dep in self.deps.iter() {
-            let _ = writeln!(self.res, "{} = \"{}\"", dep.id, dep.version);        
-        }
+        self.deps.write(&mut self.res);
 
         self.path.push("Cargo");
         self.path.set_extension(TOML_EXT);

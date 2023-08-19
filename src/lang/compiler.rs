@@ -6,13 +6,16 @@ use std::{
     }, 
 };   
 
-use crate::target::{
-    build::BuildDir,
-    rust::{
-        cargo_toml::CargoToml,
-        rs_gen::Rust
-    }, 
+use crate::{
+    target::{
+        build::BuildDir,
+        rust::{
+            cargo_toml::CargoToml,
+            rs_gen::Rust
+        }, 
 
+    }, 
+    transl::transl::Transl, project::conf::Conf
 };
 
 use crate::debug::lang::compiler::*;
@@ -99,21 +102,24 @@ pub fn to_ast(path: String) -> Vec<ModElement> {
     vec![]
 }
 
+
+
 //================
 //  compile()
 //================
 pub fn compile(
     lang: Lang,
+    transl: &Transl,
+    home: &PathBuf,
     proj_name: &String,
     // proj_dir: &ProjDir,
     out_dir: Option<String>,
-    paths: Vec<String>  // FIXME, switch to PathBuf
+    paths: Vec<String>,  // FIXME, switch to PathBuf
+    main_mods: Vec<String>
 ) -> Result<(), io::Error> {
 
 	let mut modules = HashMap::from([]);
-
 	for path in paths {
-
         let script = Script::from_file(&path);
         let lang = Lang::lang_from_ext(&path);
 
@@ -121,8 +127,8 @@ pub fn compile(
 		modules.insert(path.clone(), data );
 	}
 
-    let modules = scan(modules);
-    let modules = parse(modules);
+    let mut modules = scan(modules);
+    let mut modules = parse(modules);
     // let modules = resolve(modules);  // FIXME, turned off, not planned for first release
     // let modules = type_infer(modules); 
     // let modules = type_check(modules); // FIXME, turned off, not planned for first release
@@ -131,8 +137,7 @@ pub fn compile(
     } else {
         None
     };
-
-    generate(&lang, &proj_name, out_dir, modules);
+    generate(&lang, &transl, &home, &proj_name, out_dir, &mut modules, &main_mods);
 
     Ok(())
 }
@@ -252,9 +257,12 @@ fn type_check (
 //================
 fn generate (
     lang: &Lang,
+    transl: &Transl,
+    home: &PathBuf,
     name: &String,
     out_dir: Option<PathBuf>,
-    modules: Modules,
+    modules: &mut Modules,
+    main_mods: &Vec<String>
 
 ) {
     let mut build_dir = BuildDir::new(
@@ -265,23 +273,35 @@ fn generate (
 
     build_dir.create_dir_all();
 
+    // let seen_conf_path = home.join(transl.conf());
+    // let seen_conf_path = format!("{}", seen_conf_path.display());
+    // let seen_conf_ast = to_ast(seen_conf_path.clone()); // modules.get(&seen_conf_path).expect(format!("seen.conf is missing: looking for`{}`, available files: `{:?}`", seen_conf_path, modules.keys()).as_str());
+
+    let seen_conf = Conf::new(home);
 
     let mut cargo_toml = CargoToml::new(
         &build_dir.name, 
-        &build_dir.home
+        &build_dir.home,
+        &seen_conf   
     );
 
     for (path,module) in modules {
-        let ast=   module.ast.unwrap();
+        let file_name = std::path::PathBuf::from(path.clone());
+        let file_name = file_name.file_stem().expect("expect file stem");
+        let file_name = format!("{}", file_name.to_str().expect("expect str"));
+        
+        let ast= module.ast.as_mut().unwrap();
 
         let path = Rust::new(
             &mut build_dir, 
             &mut cargo_toml
         ).generate(
+            file_name,
             path, 
             // module.lang.ext(), 
-            module.lang,
-            ast
+            &module.lang,
+            ast,
+            &main_mods
         );
 
         // log::debug!("\n{}", debug_generated_src(&path));        
