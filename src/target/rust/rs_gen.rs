@@ -153,7 +153,7 @@ impl <'a> Rust<'a> {
          } else {
             let _ = writeln!(self.res);
             for _mod in main_mods {
-                if let Lang::Ar = self.src_lang  {
+                if let Lang::Ar = self.src_lang  {  // FIXME this should be applied to any nonascii mod name, not just arabic
                     let _ = writeln!(self.res, "#[path = \"{}.rs\"]", _mod);
                 }
                 let _ = writeln!(self.res, "mod {};", _mod);    
