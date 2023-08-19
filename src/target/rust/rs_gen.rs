@@ -999,7 +999,7 @@ impl <'a> Rust<'a> {
             Expr::Ref(_ref) => {
                 return self.imports.contains(&_ref.value.to_string());
             }
-            _ => todo!("currently, only Id Pattern is supported") // FIXME
+            _ =>  false // TODO : currently, only Id Pattern is supported
         }
     }
 }
