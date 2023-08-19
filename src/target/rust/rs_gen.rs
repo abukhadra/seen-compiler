@@ -153,6 +153,9 @@ impl <'a> Rust<'a> {
          } else {
             let _ = writeln!(self.res);
             for _mod in main_mods {
+                if let Lang::Ar = self.src_lang  {
+                    let _ = writeln!(self.res, "#[path = \"{}.rs\"]", _mod);
+                }
                 let _ = writeln!(self.res, "mod {};", _mod);    
             }
             let _ = writeln!(self.res);
