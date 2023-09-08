@@ -2,17 +2,20 @@ use std::path::PathBuf;
 
 use crate::transl::transl::Transl;
 
+use super::ProjSettings;
+
 //================
 //   build_path()
 //================
 pub fn build_path(
-    transl: &Transl,
-	home: &PathBuf,
-	proj_name: &String
+	settings: &ProjSettings
+    // transl: &Transl,
+	// home: &PathBuf,
+	// proj_name: &String
 ) -> PathBuf{
-	let mut build = home.clone();
-    build.push(transl.build());
-	build.push(proj_name.clone());
+	let mut build = settings.home.clone();
+    build.push(settings.transl.build());
+	build.push(settings.proj_name.clone());
 	build
 }
 

@@ -10,6 +10,7 @@ use crate::{
 };
 
 use super::rs_crate::Crate;
+use super::rs_features::CrateFeatures;
 
 
 //================
@@ -28,7 +29,7 @@ pub struct Package {
 
 impl Package {
     //---------------------
-    //  new()
+    //  write()
     //---------------------        
     pub fn write(
         &mut self,
@@ -53,7 +54,7 @@ pub struct Bin {
 
 impl Bin {
     //---------------------
-    //  new()
+    //  write()
     //---------------------       
     pub fn write(
         &mut self,
@@ -66,6 +67,8 @@ impl Bin {
     }
 }
 
+
+
 //================
 //  ProfileRelease
 //================  
@@ -77,7 +80,7 @@ pub struct ProfileRls {
 
 impl ProfileRls {
     //---------------------
-    //  new()
+    //  write()
     //---------------------        
     pub fn write(
         &mut self,
@@ -86,7 +89,8 @@ impl ProfileRls {
         let _ = writeln!(res, "[profile.release]");
         let _ = writeln!(res, "lto = {}", self.lto);
         let _ = writeln!(res, "opt-level = {}", self.opt_level);
-        let _ = writeln!(res, "strip = {}", self.strip);        
+        let _ = writeln!(res, "strip = {}", self.strip);       
+        let _ = writeln!(res, "");         
     }
 }
 
@@ -101,7 +105,7 @@ pub struct Deps {
 
 impl Deps {
     //---------------------
-    //  new()
+    //  write()
     //---------------------        
     pub fn write(
         &mut self,
@@ -111,6 +115,7 @@ impl Deps {
         for dep in self.items.iter_mut() {
             dep.write(res);
         }
+        let _ = writeln!(res, "");        
 
     }
 }
@@ -127,7 +132,7 @@ pub struct Dep {
 
 impl Dep {
     //---------------------
-    //  new()
+    //  write()
     //---------------------        
     pub fn write(
         &mut self,
@@ -145,6 +150,85 @@ impl Dep {
     }
 }
 
+
+//================
+//  BuildDeps
+//================  
+pub struct BuildDeps {
+    items: Vec<Dep>
+}
+
+impl BuildDeps {
+    //---------------------
+    //  write()
+    //---------------------        
+    pub fn write(
+        &mut self,
+        res: &mut String
+    ) {
+        let _ = writeln!(res, "[build-dependencies]");
+        for dep in self.items.iter_mut() {
+            dep.write(res);
+        }
+        let _ = writeln!(res, "");        
+
+    }
+}
+
+
+ //================
+//  Features
+//================  
+#[derive(Debug)]
+pub struct Features {
+    items: Vec<FeaturesEntry>
+}
+
+impl Features {
+    //---------------------
+    //  write()
+    //---------------------        
+    pub fn write(
+        &mut self,
+        res: &mut String
+    ) {
+        let _ = writeln!(res, "[features]");
+        println!("features = self.items: {:?}", self.items);
+        for entry in self.items.iter_mut() {
+            entry.write(res);
+        }
+        let _ = writeln!(res, "");        
+    }
+}
+
+ //================
+//  FeaturesEntry
+//================  
+#[derive(Debug)]
+pub struct FeaturesEntry {
+    pub id: String, 
+    pub features: Option<ast::List>
+}
+
+impl FeaturesEntry {
+    //---------------------
+    //  write()
+    //---------------------        
+    pub fn write(
+        &mut self,
+        res: &mut String
+    ) {
+        let _ = write!(res, "{} = [", self.id);        
+        if let Some(features) = &self.features {
+            for feature in features.items.iter() {
+                let _ = write!(res, "\"{}\", ", feature);    
+            }    
+        }
+        let _ = writeln!(res, "]");
+    }
+}
+
+
 //================
 //  CargoToml
 //================  
@@ -154,6 +238,8 @@ pub struct CargoToml {
     pub bin: Bin,
     pub profile_rls: ProfileRls,
     pub deps: Deps,
+    pub build_deps: BuildDeps,
+    pub features: Features,
     indent: Indent,
     res: String    
 }
@@ -169,6 +255,9 @@ impl CargoToml {
     ) -> Self {
        
         let mut deps = Deps { items: vec![]};
+        let mut build_deps = BuildDeps { items: vec![]};
+        let mut features = Features { items: vec![]};
+
         for el in seen_conf.data.iter() {
             match el {
                 ConfElement::Rust(rs) => {
@@ -184,6 +273,9 @@ impl CargoToml {
                 _ => ()
             }
         }
+
+        
+
 
         Self {
             path: path.clone(),
@@ -202,15 +294,17 @@ impl CargoToml {
                 strip: "true".to_string() 
             },
             deps,
+            build_deps,
+            features,
             indent: Indent::new(),
             res: String::new()
         }
     }
 
     //---------------------
-    //  add()
+    //  add_dep()
     //---------------------   
-    pub fn add(
+    pub fn add_dep(
         &mut self,
         _crate: impl Crate
     )  {
@@ -223,6 +317,37 @@ impl CargoToml {
         );
     }
 
+    //---------------------
+    //  add_build_dep()
+    //---------------------   
+    pub fn add_build_dep(
+        &mut self,
+        _crate: impl Crate
+    )  {
+        self.build_deps.items.push(
+            Dep { 
+                id: _crate.id().clone(), 
+                version: _crate.version().clone(),
+                features: _crate.features().clone()
+            }
+        );
+    }    
+
+    //---------------------
+    //  add_features()
+    //---------------------   
+    pub fn add_features(
+        &mut self,
+        crate_features: impl CrateFeatures
+    )  {
+        self.features.items.push(
+            FeaturesEntry { 
+                id: crate_features.id().clone(), 
+                features: crate_features.features().clone()
+            }
+        );
+    }    
+
 }
 
 //================
@@ -230,15 +355,18 @@ impl CargoToml {
 //================  
 impl CargoToml {
     pub fn generate(&mut self) {
-        self.package.write(&mut self.res);
+        let mut res = &mut self.res;
+        self.package.write(res);
 
-        self.bin.write(&mut self.res);
+        self.bin.write(res);
 
-        self.profile_rls.write(&mut self.res);
+        self.profile_rls.write(res);
+   
+        self.deps.write(res);
 
-        let _ = writeln!(self.res, "");
-    
-        self.deps.write(&mut self.res);
+        self.build_deps.write(res);
+
+        self.features.write(res);
 
         self.path.push("Cargo");
         self.path.set_extension(TOML_EXT);

@@ -51,11 +51,11 @@ impl BuildDir {
     pub fn new(
         lang: &Lang,
         name: &String,
-        out_dir: Option<PathBuf>
+        out_dir: &Option<PathBuf>
     ) -> Self {
 
         let home = match out_dir {
-            Some(out_dir) => out_dir,
+            Some(out_dir) => out_dir.clone(),
             None => {
                 match env::current_dir() {
                     Ok(path) => path,

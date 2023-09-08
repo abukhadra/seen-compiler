@@ -1,19 +1,18 @@
 use std::{
     fs,
-    fmt::{
-        Write
-    }, path::PathBuf,
+    fmt::Write, 
+    path::PathBuf, 
 };
 
 use crate::lang::{
-    Lang,
-    token::{
-        Token,
-        Location,
-        TokenValue
-    },
-    syntax_tree::ast::*, 
-};
+        Lang,
+        token::{
+            Token,
+            Location,
+            TokenValue
+        },
+        syntax_tree::ast::{*, self}, 
+    };
 
 use crate::util::{
     ar::to_western_num,
@@ -22,39 +21,48 @@ use crate::util::{
 };
 
 use crate::target::{
-    build::{
-        BuildDir
-    },
+    is_attr,
+    build::BuildDir,
     html::html_gen::Html,
     rust::cargo_toml::CargoToml,
+    rust::build_rs::BuildRs,
     rust::rs_crate::{
         actix_files::ActixFiles,
-        actix_web::ActixWeb
-    }
+        actix_web::ActixWeb,
+        serde_json::SerdeJson,
+        serde::Serde,
+        tauri_build::TauriBuild,
+        tauri::Tauri
+    },
+    rust::rs_features::custom_protocol::CustomProtocol,
+    rust::web::actix,
+    rust::desktop::tauri,
+    rust::games::bevy,
 };
 
 //================
 //   Constants
 //================
 const RS_EXT: &'static str = "rs";
-const INDEX_HTML: &'static str = "index.html";
 
 
 //================
 //   Rust
 //================
 pub struct Rust<'a> {
-    src_lang: Lang,
-    path: String,
-    indent: Indent,
-    res: String,
-    html: Option<Html>,
-    proj_dir : &'a mut BuildDir,
-    cargo_toml : &'a mut CargoToml,
-    imports: Vec<String>         // FIXME: vector of imported modules... used as a workaround for not having a resolver / semantic analyzer
-                                //          for now , we are supporint  module name ( single token ) imports
-                                //          during code generation, a reference will be checked if it exists in this vector, if it does , then we will use :: rather than . to access elements
-                                //          later on, the resolver / semantic analyzer should eliminate the need for this workaround
+    pub src_lang: Lang,
+    pub proj_name: String,
+    pub path: String,
+    pub indent: Indent,
+    pub res: String,
+    pub html: Option<Html>,
+    pub proj_dir : &'a mut BuildDir,
+    pub cargo_toml : &'a mut CargoToml,
+    pub imports: Vec<String>,       // FIXME: vector of imported modules... used as a workaround for not having a resolver / semantic analyzer
+                                    //          for now , we are supporint  module name ( single token ) imports
+                                    //          during code generation, a reference will be checked if it exists in this vector, if it does , then we will use :: rather than . to access elements
+                                    //          later on, the resolver / semantic analyzer should eliminate the need for this workaround
+    pub redirect: bool                                     
 }
 
 impl <'a> Rust<'a> {
@@ -63,17 +71,20 @@ impl <'a> Rust<'a> {
     //---------------------
     pub fn new (
         project_struct: &'a mut BuildDir,
-        cargo_toml: &'a mut CargoToml
+        cargo_toml: &'a mut CargoToml,
+        redirect: bool
     ) -> Self {
         Self {
             src_lang: Lang::Ar,
+            proj_name: String::new(),
             path: String::new(),
             indent: Indent::new(),
             res: String::new(),
             html: None,
             proj_dir: project_struct,
             cargo_toml,
-            imports: vec![]
+            imports: vec![],
+            redirect
         }
     }
 
@@ -82,17 +93,18 @@ impl <'a> Rust<'a> {
     //---------------------
     pub fn generate(
         &mut self,
+        proj_name: &String,
         mut file_name: String,
         path: &String,
         src_lang: &Lang, //&str,
-        ast: &mut Vec<ModElement>,
-        main_mods: &Vec<String>
+        ast: &'a mut Vec<ModElement>,
+        main_mods: &Vec<String>,
     ) {
 
         let _ = writeln!(self.res, "#![allow(warnings)]\n");
 
-
         self.src_lang = src_lang.clone();
+        self.proj_name = proj_name.clone();
         self.path = path.clone();
         self.html = Some(Html::new(
             &self.src_lang,
@@ -145,11 +157,15 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn main_fn(
         &mut self,
-        mut _fn: &Fn,
+        mut _fn: &'a Fn,
         main_mods: &Vec<String>
     ) {
-        if self.is_attr("web_server", &_fn.attrs) || self.is_attr("مخدم_شع", &_fn.attrs) {     // FIXME hardcoding @web_server for the demo
+        if is_attr("desktop", &_fn.attrs) || is_attr("مكتبي", &_fn.attrs) {     // FIXME hardcoding @desktop for the demo
+            self.desktop_main(&_fn.block, &_fn.attrs);
+        } else if is_attr("web_server", &_fn.attrs) || is_attr("مخدم_شع", &_fn.attrs) {     // FIXME hardcoding @web_server for the demo
             self.web_server_main(&_fn.block, &_fn.attrs);
+         } else if is_attr("game_2d", &_fn.attrs) || is_attr("لعبة_ثنائية_الابعاد", &_fn.attrs) { 
+            self.game_2d_main(&_fn.block, &_fn.attrs);
          } else {
             let _ = writeln!(self.res);
             for _mod in main_mods {
@@ -187,7 +203,6 @@ impl <'a> Rust<'a> {
         }
         false
     }
-
 }
 
 //================
@@ -236,7 +251,7 @@ fn is_main_param_list_str(_type: &Option<Type>) -> bool {
 impl <'a> Rust<'a> {  
     fn _fn(
         &mut self,
-        _fn: &Fn,  
+        _fn: &'a Fn,  
     ) {
         
         let name = if let Some(name) = &_fn.name {
@@ -255,7 +270,6 @@ impl <'a> Rust<'a> {
         let _ = writeln!(self.res);
     }
 }
-
 
 //================
 //   fn_params()
@@ -315,36 +329,6 @@ impl <'a> Rust<'a> {
     }
 }
 
-//================
-//   web_server_main()
-//================
-impl <'a> Rust<'a> {
-    fn web_server_main(
-        &mut self,
-        els: &Vec<BlockElement>,
-        attrs: &Option<Vec<Attr>>
-    ) {
-    
-        for el in els {
-            match el {
-                BlockElement::Expr(Expr::Ret(v)) => {
-                    let v = &**v;
-                    match v {
-                        Expr::StructLiteral(data) => {
-                            // FIXME just a quick hack to demo the project, in the real app, the attributes will alter the ast 
-                            if self.is_attr("web_server", attrs) || self.is_attr("مخدم_شع", attrs){
-                                self.web_server(&data);
-                            }
-                        },
-                        _ => todo!()   // FIXME
-                    }
-                    
-                }
-                _ => todo!() // TODO
-            }
-        }
-    }
-}
 
 //================
 //   fn_body()
@@ -353,7 +337,7 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn fn_body(
         &mut self,
-        els: &Vec<BlockElement>,
+        els: &'a Vec<BlockElement>,
         attrs: &Option<Vec<Attr>>
     ) {
         let _ = writeln!(self.res, "{{");    
@@ -375,7 +359,7 @@ impl <'a> Rust<'a> {
                 },
                 BlockElement::Expr(Expr::StructLiteral(data)) => {
                     // FIXME just a quick hack to demo the project, in the real app, the attributes will alter the ast 
-                    if self.is_attr("web_server", attrs) {
+                    if is_attr("web_server", attrs) {
                         self.web_server(&data);
                     }
                 },
@@ -426,46 +410,6 @@ impl <'a> Rust<'a> {
                 
         self.indent.dec();
         let _ = writeln!(self.res, "{}}}", self.indent);
-    }
-}
-
-
-//================
-//   is_attr()
-//================
-impl <'a> Rust<'a> {
-    fn is_attr(
-        &mut self,
-        name: &str,
-        attrs: &Option<Vec<Attr>>
-    ) -> bool {
-        if let Some(attrs) = attrs {
-            if let Some(attr) =  attrs.get(0) {
-                self.is_ref_attr(name, attr) 
-            } else {
-                false
-            }                     
-        } else {
-            false
-        }
-    }
-
-}
-
-//================
-//   is_ref_attr()
-//================
-impl <'a> Rust<'a> {
-    fn is_ref_attr(
-        &mut self,
-        name: &str, 
-        attr: &Attr
-    ) -> bool {
-        match &attr.expr {
-            AttrExpr::Ref(v) => {
-                v.to_string().as_str() == name 
-            }
-        }
     }
 }
 
@@ -610,7 +554,7 @@ impl <'a> Rust<'a> {
 impl <'a> Rust<'a> {
     fn struct_impl(
         &mut self,
-        struct_impl: &StructImpl,
+        struct_impl: &'a StructImpl,
     ) {
         let _ = writeln!( self.res, "{}impl {} {{", self.indent, struct_impl.name);
         self.indent.inc();
@@ -926,9 +870,9 @@ impl <'a> Rust<'a> {
             // "احضر"          | "import"      => self.import(args),    // FIXME: this is hardcoded and handled inside declare for the moment
             "اطبع_سطر"      | "println"     => self.println(args),
             "اطبع"          | "print"       => self.print(args),
-            "مخدم_شع"       | "web_view"    => self.web_view(args),
-            "mobile_view" => self.mobile_view(args),
-            "gui_view" => self.gui_view(args),
+            // "مخدم_شع"       | "web_view"    => self.web_view(args),
+            // "mobile_view" => self.mobile_view(args),
+            // "gui_view" => self.gui_view(args),
             // _ => panic!("could not resolve: `{}`", name)
             _ => self.user_defined_fn(&name, args)
 
@@ -975,8 +919,6 @@ impl <'a> Rust<'a> {
         } else {    // FIXME: other cases such as images, other pls ...etc are not covered. assuming a filename without extension ( also a seen file)
             _mod.as_str()
         };
-
-        
 
         let _ = writeln!(self.res, "#[path = \"{}.rs\"]", _mod);
         if let Pattern::Id(id_pat) = pattern {
@@ -1288,10 +1230,23 @@ impl <'a> Rust<'a> {
             BlockElement::Decl(decl) => {
                 self.decl(&decl);
             },
-            BlockElement::Expr(expr) => self.expr(&expr)
+            BlockElement::Expr(expr) => self.expr(&expr),
+            BlockElement::AutoImpl => self.auto_impl()
         }
     }
 }
+
+//================
+//  auto_impl()
+//================  
+impl <'a> Rust<'a> {   
+    pub fn auto_impl(
+        &mut self,
+    ) { 
+        todo!();
+    }
+}
+
 
 //================
 //  main_args()
@@ -1360,241 +1315,3 @@ impl <'a> Rust<'a> {
         false    
     }
 }
-
-//================
-//  web_server()
-//================  
-impl <'a> Rust<'a> { 
-    pub fn  web_server(
-        &mut self,
-        data: &StructLiteral
-    ) {
-        let mut path = self.proj_dir.res.pages.clone();
-        path.push(INDEX_HTML);
-        let index_html = self.html
-                        .as_mut()
-                        .unwrap()
-                        .page(&mut path, data);
-        self.actix(&path, data);
-
-    }
-}
-
-//================
-//  actix()
-//================  
-impl <'a> Rust<'a> {
-    pub fn  actix(
-        &mut self,
-        path: &PathBuf,
-        data: &StructLiteral
-
-    ) {
-
-    let actix_web = ActixWeb::new();
-    let actix_file = ActixFiles::new();
-
-    self.cargo_toml.add(actix_file);
-    self.cargo_toml.add(actix_web);
-
-    let res_dir = match self.src_lang {
-        Lang::Ar => "موارد",
-        Lang::En => "res"
-    };
-
-    let pages_dir = match self.src_lang {
-        Lang::Ar => "صفحات",
-        Lang::En => "pages"
-    };    
-
-    let server_start_msg = match self.src_lang {
-        Lang::Ar => "لقد تم تشغيل المخدم , العنوان : ",
-        Lang::En => "server started: "
-    };
-
-    let mut settings = None;
-    
-    let iter = if let Some((t, Some(expr))) = data.items.get(0) {
-
-        let mut iter = data.items.iter();
-        match &t.value  {
-            TokenValue::Id(x) => {
-                if x == "data" ||  x == "root" || x == "بيانات" || x == "جذر" {
-                    match expr {
-                        Expr::StructLiteral(literal) => {
-                            iter = literal.items.iter();
-                        }
-                        _ => ()
-                    }    
-                }
-            },
-            _ => ()
-        }
-        iter
-
-    } else {
-        data.items.iter()
-    };
-
-
-    for (k,v) in iter {
-        match k.to_string().as_str() {
-            "settings" | "اعدادات" => {
-                settings = self.server_settings(v);
-                break;
-            },
-            _ => panic!("expecting server settings")
-        }
-    };
-
-    let settings = settings.expect("expecting server settings");
-
-
-    let hostname = match self.src_lang {
-        Lang::Ar => {
-            match settings.hostname.as_str() {
-                "المضيف_المحلي" => "localhost".to_string(),
-                x => to_western_num(&x.to_string())
-            }
-        },
-        Lang::En => settings.hostname
-    };
-
-    let port = match self.src_lang {
-        Lang::Ar => to_western_num(&settings.port.to_string()),
-        Lang::En => settings.port
-    };
-
-
-    
-
-    // FIXEME, hardcoding the example for demo
-    let _ = write!(self.res, 
-r#"use actix_web::{{App, HttpServer}};
-use actix_files::Files;
-
-const HOSTNAME: &str = "{hostname}";
-const PORT: u32 = {port};
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {{
-    let addr = format!("{{}}:{{}}", HOSTNAME, PORT);
-    let server = HttpServer::new(move || {{
-        App::new()            
-            .service(Files::new("/", "./{res_dir}/{pages_dir}").index_file("index.html"))  
-
-    }});
-
-    println!("{server_start_msg}\n\t\thttp://{{}}", addr);
-    server
-    .bind(addr)?
-    .run()
-    .await
-}}"#);
-        
-        match fs::write(&self.proj_dir.src.main, &self.res){
-            Err(err) => panic!("{:?}", err),
-            Ok(_) => ()
-        }
-    }
-}
-
-//================
-//   ServerSettings()
-//================
-pub struct ServerSettings {
-    pub hostname: String,
-    pub port: String
-}
-
-impl ServerSettings {
-    pub fn new() -> Self {
-        Self {
-            hostname : String::new(),
-            port: String::new()
-        }
-    }
-}
-
-//================
-//   server_settings()
-//================
-impl <'a> Rust<'a> {
-    pub fn server_settings (
-        &mut self,
-        data: &Option<Expr>
-    ) -> Option<ServerSettings> {
-        let mut settings = ServerSettings::new();
-
-        let data = match data {
-            Some(Expr::StructLiteral(sruct_literal)) => sruct_literal,
-            _ => return None
-        };
-
-        for (k,v) in data.items.iter() {
-            match k.to_string().as_str() {
-                "hostname" | "اسم_المضيف"=> {
-                    
-                    if let Some(v) = v { 
-                        match v {
-                            Expr::Str(v) => settings.hostname = v.value.to_string(),
-                            _ => panic!("unexpected hostname value")
-                        }
-                    }
-                    
-                },
-                "port" | "منفذ"=> {
-                    if let Some(v) = v { 
-                        match v {
-                            Expr::Int(v) => settings.port = v.value.to_string().parse().expect("port should be a number"),
-                            _ => panic!("unexpected port value")
-                        }
-                    }                    
-                },
-                _ => panic!("unsupported: {:?}", k)
-            }
-        }
-        Some(settings)
-    }
-}
-
-
-//================
-//  web_view()
-//================  
-impl <'a> Rust<'a> {
-    pub fn web_view(
-        &mut self,
-        args: &Tuple        
-    ) {
-        todo!();
-    }
-}
-
-
-//================
-//  mobile_view()
-//================  
-impl <'a> Rust<'a> { 
-    pub fn mobile_view(
-        &mut self,
-        args: &Tuple        
-    ) {
-        todo!();
-    }
-}
-
-//================
-//  gui_view()
-//================  
-impl <'a> Rust<'a> {   
-    pub fn gui_view(
-        &mut self,
-        args: &Tuple        
-    ) {
-        todo!();
-    }
-}
-
-
-

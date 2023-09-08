@@ -73,8 +73,6 @@ impl Html {
         );
         self.indent.inc();
 
-
-
         let iter = if let Some((t, Some(expr))) = data.items.get(0) {
 
             let mut iter = data.items.iter();
@@ -96,8 +94,6 @@ impl Html {
         } else {
             data.items.iter()
         };
-    
-
 
         // for (k,v) in data.items.iter() {
             for (k,v) in iter {
@@ -107,6 +103,12 @@ impl Html {
                     break;
 
                 },
+                "view" | "عرض" => {
+                    self.view(v);
+                    break;
+
+                },
+
                 _ => ()
             };
         }
@@ -114,10 +116,9 @@ impl Html {
         let _ = writeln!(self.res, "</html>");
         
         match fs::write(&path, &self.res){
-            Err(err) => panic!("{:?}", err),
+            Err(err) => panic!("path: {:?}, {:?}", path, err),
             Ok(_) => ()
         }
-
     }
 }
 
@@ -130,33 +131,114 @@ impl Html {
         &mut self,
         data: &Option<Expr>
     ) {
+        
+        let mut title = &None;
+        let mut content = &None;
 
         let data = match data { 
             Some(Expr::StructLiteral(sruct_literal)) => sruct_literal,
-            _ => panic!("expecting homepage data")
+            _ => panic!("expecting data")
         };
 
-
-
+        // FIXME: item lookup should be done in order, not just a loop. for example we should look for title then body,
+        //          currently the code does not take order into consideration
         for (k,v) in data.items.iter() {
-        // for (k,v) in iter {
             match k.to_string().as_str() {
-                "title" | "عنوان"=> {
-                    if let Some(v) = v { let _ = writeln!(self.res, "{}<title>{}</title>", self.indent, v); }
+                "title" | "عنوان"=> {                                   
+                    title = v;
                 },
                 "content" | "محتوى"=> {
-                    let _ = writeln!(self.res, "{}<body>", self.indent);
-                    self.indent.inc();
-                    if let Some(v) = v { let _ = writeln!(self.res, "{}{}", self.indent, v);}
-                                                
-                    self.indent.dec();
-                    let _ = writeln!(self.res, "{}</body>", self.indent);
-                    self.indent.dec();
-                    
+                        content = v;  
                 },
                 _ => panic!("unsupported: {:?}", k)
             }
         }
+
+        let title = if let Some(title) = title { 
+            format!("{}", title) 
+        } else { 
+            String::new() 
+        };
+
+        let content = if let Some(content) = content { 
+            format!("{}", content) 
+        } else { 
+            String::new() 
+        };        
+
+        let _ = writeln!(self.res, "{}<head>", self.indent);
+        self.indent.inc();        
+        let _ = writeln!(self.res, "{}<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\" />", self.indent);
+        let _ = writeln!(self.res, "{}<title>{}</title>", self.indent, title);
+        self.indent.dec();        
+        let _ = writeln!(self.res, "{}</head>", self.indent);
+
+        let _ = writeln!(self.res, "{}<body>", self.indent);
+        self.indent.inc();        
+        let _ = writeln!(self.res, "{}{}", self.indent, content);
+        self.indent.dec();
+        let _ = writeln!(self.res, "{}</body>", self.indent);
+        self.indent.dec();
+
+    }
+}
+
+//================
+//   view()
+//================
+impl Html {     
+    pub fn view(
+        &mut self,
+        data: &Option<Expr>
+    ) {
+
+        let mut title = &None;
+        let mut content = &None;
+
+        let data = match data { 
+            Some(Expr::StructLiteral(sruct_literal)) => sruct_literal,
+            _ => panic!("expecting data")
+        };
+
+        // FIXME: item lookup should be done in order, not just a loop. for example we should look for title then body,
+        //          currently the code does not take order into consideration
+        for (k,v) in data.items.iter() {
+            match k.to_string().as_str() {
+                "title" | "عنوان"=> {                                   
+                    title = v;
+                },
+                "content" | "محتوى"=> {
+                        content = v;  
+                },
+                _ => panic!("unsupported: {:?}", k)
+            }
+        }
+
+        let title = if let Some(title) = title { 
+            format!("{}", title) 
+        } else { 
+            String::new() 
+        };
+
+        let content = if let Some(content) = content { 
+            format!("{}", content) 
+        } else { 
+            String::new() 
+        };        
+
+        let _ = writeln!(self.res, "{}<head>", self.indent);
+        self.indent.inc();        
+        let _ = writeln!(self.res, "{}<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\" />", self.indent);
+        let _ = writeln!(self.res, "{}<title>{}</title>", self.indent, title);
+        self.indent.dec();        
+        let _ = writeln!(self.res, "{}</head>", self.indent);
+
+        let _ = writeln!(self.res, "{}<body>", self.indent);
+        self.indent.inc();        
+        let _ = writeln!(self.res, "{}{}", self.indent, content);
+        self.indent.dec();
+        let _ = writeln!(self.res, "{}</body>", self.indent);
+        self.indent.dec();
 
     }
 }

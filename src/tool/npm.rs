@@ -6,17 +6,16 @@ use std::{
 use crate::util::fmt::*;
 
 //================
-//   cargo
+//   npx
 //================
+pub struct NPM {}
 
-pub struct Cargo {}
-
-impl Cargo {
+impl NPX {
     //---------------------
     //  new()
     //---------------------		    
     pub fn new() -> Self {
-        Self::v(); // run `cargo -v` to make sure that cargo is installed
+        Self::v(); // run `npm -v` to make sure that npx is installed
         Self {}
     }    
 
@@ -24,56 +23,14 @@ impl Cargo {
     //  v()
     //---------------------		    
     pub fn v() {
-        Command::new("cargo")
-                .arg("-V")
+        Command::new("npm")
+                .arg("-v")
                 .spawn()
                 .expect(
-                    Color::red("could not find cargo, please make sure that it's installed.")
+                    Color::red("could not find npx, please make sure that it's installed.")
                     .as_str()
                 );
         }	    
-
-    //---------------------
-    //  build()
-    //---------------------		
-    pub fn build(
-        &self,
-        work_dir: &String,
-        redirect: bool
-    ) -> Option<Child> {
-
-        self.spawn(
-            "cargo",
-            &["build"],
-            work_dir,
-            redirect
-        )
-    }
-
-    //---------------------
-    //  run()
-    //---------------------		
-    pub fn run(
-        &self,
-        work_dir: &String,
-        cli_args: &Vec<String>,
-        redirect: bool
-    ) -> Option<Child> {
-        let mut args = vec!["run", "--"];
-        for arg in cli_args {
-            args.push(arg.as_str());
-        }
-
-        let args = ["run"];     // FIXME: try comment this line out and run the bootsrap-seen-compiler project, it will give an error
-                                //    for now pass only "run" as an arg and fix the cargo run -- [cli_args]  later
-        self.spawn(
-            "cargo",
-            &args,  
-            work_dir,
-            redirect
-        )
-    }    
-
     //---------------------
     //  spawn()
     //---------------------		        
@@ -91,7 +48,7 @@ impl Cargo {
             .stderr(Stdio::piped())
             .spawn() {
                 Err(err) => {
-                    eprintln!("{}", Color::red(format!("something went wrong, the command `cargo {}` failed!", args[0]).as_str()) );
+                    eprintln!("{}", Color::red(format!("something went wrong, cmd: `{}` , args: `{:?}` failed!", cmd, args).as_str() ));
                     None
                 },
                 Ok(mut cmd) => {
@@ -126,5 +83,25 @@ impl Cargo {
             }
         }                            
     }
+}
 
+impl NPM {
+    
+    //---------------------
+    //  npm_install()
+    //---------------------		
+    pub fn npm_install(
+        &self,
+        work_dir: &String,
+        proj_name: &String,
+        redirect: bool
+    ) -> Option<Child> {
+        let child = self.spawn(
+            "npm",
+            &["i"],
+            work_dir,
+            redirect
+        );
+        child
+    }
 }

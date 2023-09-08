@@ -13,16 +13,20 @@ use clap::{
   	CommandFactory
 };
 
-use crate::lang::{
-	Lang,
-	compiler,
-	syntax_tree::ast::{
-		ModElement,
-		Fn,
-		StructLiteral,
-		Expr,
-		BlockElement
-	}
+use crate::{
+	lang::{
+		Lang,
+		compiler,
+		syntax_tree::ast::{
+			ModElement,
+			Fn,
+			StructLiteral,
+			Expr,
+			BlockElement
+		}
+	}, 
+	transl, 
+	project::ProjSettings
 };
 
 use crate::project::{
@@ -34,7 +38,10 @@ use crate::project::{
 
 use crate::transl::transl::Transl;
 
-use crate::tool::cargo::*;
+use crate::tool::{
+	cargo::*,
+	npx::NPX
+};
 
 //================
 //   Cli
@@ -61,8 +68,6 @@ impl Cli {
     }
 }
 
-
-
 //================
 //   Commands
 //================
@@ -86,7 +91,7 @@ pub enum Commands {
   /// Check
   Check(Check),
   // Launch the UI Seen Editor
-  Editor(Editor),
+//   Editor(Editor),
 }
 
 //================
@@ -175,7 +180,7 @@ impl Init {
 						proj.create_dir_all();
 						proj.create_template(Some(&template));
 					},
-					_ => println!("unsupported : init {}", template)
+					_ => eprintln!("unsupported : init {}", template)
 				}
 			},
 			None => {
@@ -198,26 +203,20 @@ impl Compile {
     //---------------------
     //  exec()
     //---------------------		
-	pub fn exec(path: Option<PathBuf>) {
-		let home = match path {
-			None => std::env::current_dir().unwrap(),
-			Some(path) => path
-		};
-		
-		let lang = conf::proj_lang(&home).expect("");
-		let transl = Transl::new(&lang);
-		let proj_name = conf::proj_name(&transl, &home);
-		let build_path = build::build_path(&transl, &home, &proj_name);
+	pub fn exec(
+		settings: &ProjSettings
+	) {
+		let build_path = build::build_path(&settings);
 		let out = Some(format!("{}", build_path.display()));
-
-		let paths = Compile::src_paths(&transl, &home, &proj_name);
-		let main_mods = Compile::main_mods(&transl, &home, &proj_name);
+		let paths = Compile::src_paths(&settings);
+		let main_mods = Compile::main_mods(&settings);
 	
-		if let Err(err) = compiler::compile(lang, &transl, &home, &proj_name, out, paths, main_mods ) {
+		if let Err(err) = compiler::compile(&settings, out, paths, main_mods ) {
 			panic!("{}", err);
 		  }  	
 		
-		println!("{} built successfully.", proj_name);
+		  // FIXME should only print when build is actually successful. right now it prints even though underlying code can be wrong or wont compile
+		println!("{} built successfully.", settings.proj_name);
 	}
 
 	//---------------------
@@ -225,12 +224,10 @@ impl Compile {
 	//---------------------
 	// FIXME: instead of reading directories twice, combine main_mods and src_paths in one loop
 	pub fn main_mods(
-		transl: &Transl, 
-		home: &PathBuf,
-		proj_name: &String
+		settings: &ProjSettings
 	) -> Vec<String> {
 		let mut mods = vec![];
-		let src_path = src::src_path(&transl, &home);
+		let src_path = src::src_path(&settings.transl, &settings.home);
 		let src_content = std::fs::read_dir(src_path).expect("expecting src dir");	// FIXME handle error		
 		
 		for el in src_content {		
@@ -258,16 +255,17 @@ impl Compile {
 	// FIXME: workaround: any files that is not a seen file will be copied to the dest directory under the same subfolders
 	//			this will allow seen to use rust modules which will help in bootsrapping the compiler
 	fn src_paths(
-		transl: &Transl, 
-		home: &PathBuf,
-		proj_name: &String
+		settings: &ProjSettings
 	) -> Vec<String> {
 		let mut seen_files = vec![];
-		let src_path = src::src_path(&transl, &home);
+		let src_path = src::src_path(&settings.transl, &settings.home);
 		let src_content = std::fs::read_dir(src_path).expect("expecting src dir");	// FIXME handle error		
-		let build_src_path = build::build_src_path(&transl, &home, &proj_name);
+		let build_src_path = build::build_src_path(&settings.transl, &settings.home, &settings.proj_name);
 
-		fs::create_dir_all(&build_src_path).expect("expecting build src dir to be created");		
+		if settings.target == "" {
+			fs::create_dir_all(&build_src_path).expect("expecting build src dir to be created");		
+		}
+		
 
 		for el in src_content {		
 			let el = el.expect("expecting element");
@@ -300,6 +298,7 @@ impl Compile {
 	// FIXME: code here copies any non-seen src code file in the project src dirs to the build dirs, 
 	//			compiler should have more awareness of the files as the project becomes more developed
 	// FIXME: should copy the src dir to bin and recursively compile or copy rather than have the redundant code in src_paths()
+	// FIXME: fn name is confusing : for example change to cp_src_others() 
 	fn cp_dir(
 		src: &PathBuf,
 		dest: &PathBuf,
@@ -361,20 +360,17 @@ impl Build {
     //  exec()
     //---------------------			
 	pub fn exec(
-		path: Option<PathBuf>,
-		redirect: bool
+		settings: &ProjSettings
 	) -> Option<Child> {
-		let home = match path {
-			None => std::env::current_dir().unwrap(),
-			Some(path) => path
-		};
-		let lang = conf::proj_lang(&home).expect("");
-		let transl = Transl::new(&lang);
-		let proj_name = conf::proj_name(&transl, &home);
-		let build_path = build::build_path(&transl, &home, &proj_name);
+		let build_path = build::build_path(&settings);
 		let work_dir = format!("{}", build_path.display());
-		Compile::exec(Some(home));
-		Cargo::new().build(&work_dir, redirect)
+
+		Compile::exec(&settings);
+		if settings.target == "" {
+			Cargo::new().build(&work_dir, settings.redirect)
+		}  else {
+			None	// FIXME: if None, editor gives an error (error could not receive output from cargo)
+		}
 	}	
 }
 
@@ -390,23 +386,29 @@ impl Run {
     //  exec()
     //---------------------		
 	pub fn exec(
-		path: Option<PathBuf>,
-		redirect: bool
+		settings: &ProjSettings
 	) -> Option<Child> {
 		let mut cli_args : Vec<String> = std::env::args().collect();
 		cli_args.remove(0);
 
-		let home = match path {
-			None => std::env::current_dir().unwrap(),
-			Some(path) => path
-		};
-		let lang = conf::proj_lang(&home).expect("");
-		let transl = Transl::new(&lang);
-		let proj_name = conf::proj_name(&transl, &home);
-		let build_path = build::build_path(&transl, &home, &proj_name);
+		let transl = &settings.transl;
+		let target = &settings.target;
+
+		let build_path = build::build_path(&settings);
 		let work_dir = format!("{}", build_path.display());
-		Compile::exec(Some(home));
-		Cargo::new().run(&work_dir, &cli_args, redirect)
+
+		Compile::exec(&settings);
+		if target == "" {
+			Cargo::new().run(&work_dir, &cli_args, settings.redirect)
+		} else if target.as_str() == transl.ios() {
+
+			let npx = NPX::new();
+			npx.react_native_run_ios(&work_dir, settings.redirect)
+		} else if target.as_str() == transl.android() {
+			NPX::new().react_native_run_android(&work_dir, settings.redirect)
+		} else {
+			None
+		}
 	}	
 }
 
@@ -432,35 +434,35 @@ pub struct Update {}
 pub struct Check {}
 
 
-//================
-//   Editor
-//================
-#[derive(Parser,Debug)]
-#[command()]
-pub struct Editor {
-	#[arg(long)]
-	/// Set language to Arabic
-	pub ar: bool,
+// //================
+// //   Editor
+// //================
+// #[derive(Parser,Debug)]
+// #[command()]
+// pub struct Editor {
+// 	#[arg(long)]
+// 	/// Set language to Arabic
+// 	pub ar: bool,
 
-	/// Launch the editor and open the project at the specified path
-	///	e.g:
-	///		`seen editor .` will open the project in the current directory
-	pub path: Option<String>,
-}
+// 	/// Launch the editor and open the project at the specified path
+// 	///	e.g:
+// 	///		`seen editor .` will open the project in the current directory
+// 	pub path: Option<String>,
+// }
 
-impl Editor {
-    //---------------------
-    //  exec()
-    //---------------------		
-	pub fn exec(
-		ar: bool,
-		path: Option<String>
-	) {
-		panic!()	// TODO Editor is handled in the tauri project, 
-					// remove the main and cli from here, make this a lib only
-					//	handle both cli (clap) and gui from the tauri project
-	}
-}
+// impl Editor {
+//     //---------------------
+//     //  exec()
+//     //---------------------		
+// 	pub fn exec(
+// 		ar: bool,
+// 		path: Option<String>
+// 	) {
+// 		panic!()	// TODO Editor is handled in the tauri project, 
+// 					// remove the main and cli from here, make this a lib only
+// 					//	handle both cli (clap) and gui from the tauri project
+// 	}
+// }
 
 //================
 //   check_dir_not_exists()
@@ -476,7 +478,6 @@ pub fn check_dir_not_exists(path: &PathBuf) -> Result<(), String> {
 	}
 	Ok(())
 }
-
 
 //================
 //   check_dir_empty()

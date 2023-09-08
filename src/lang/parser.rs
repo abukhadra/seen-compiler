@@ -401,6 +401,11 @@ impl<'a> Parser<'a>{
     }
 
     //---------------------
+    //  expect_double_dot()
+    //---------------------    
+    fn expect_double_dot(&mut self) -> bool { expect!(&self, TokenValue::DoubleDot) }
+
+    //---------------------
     //  expect_double_colon()
     //---------------------    
     fn expect_double_colon(&mut self) -> bool { expect!(&self, TokenValue::DoubleColon) }    
@@ -2480,7 +2485,6 @@ impl<'a> Parser<'a> {
         &mut self,
     )  -> Result<Vec<BlockElement>, Error> {
         let mut els = vec![];      
-
         if self.is_struct_literal() {
             let t = self.lookahead();
             let expr = Expr::StructLiteral(self.require_struct_lietral()?);
@@ -2491,7 +2495,10 @@ impl<'a> Parser<'a> {
         }
 
         loop {
-            if self.expect_let() {
+            if self.expect_double_dot() {
+                self.next();
+                els.push(BlockElement::AutoImpl);
+            } else if self.expect_let() {
                 let decl = self.require_let_decl()?;
                 els.push(BlockElement::Decl(decl));
             } else if self.expect_short_decl() {
@@ -2522,8 +2529,11 @@ impl<'a> Parser<'a> {
         &mut self,
     )  -> Result<Vec<BlockElement>, Error> {
 
-        let mut els = vec![];        
-        if self.expect_let() {
+        let mut els = vec![];      
+        if self.expect_double_dot() {
+            self.next();
+            els.push(BlockElement::AutoImpl);
+        } else if self.expect_let() {
             let decl = self.require_let_decl()?;
             els.push(BlockElement::Decl(decl));
         } else if self.expect_short_decl() {
@@ -2624,10 +2634,11 @@ impl<'a> Parser<'a> {
         let mut res: Result<Token,Error>;
         loop {
             let t = self.lookahead_n_ws(i);
-            if TokenValue::Eof == t.value {
+            if matches!(t.value, TokenValue::Eof) {
                 res = Err(
-                    error!("unclosed , expected `)`".to_string(), t)
+                    error!(format!("unclosed , expected `{}`", close_sym ), t)
                 );
+                break;
             } else if open_sym == t.value {
                 level += 1
             } else if close_sym == t.value {

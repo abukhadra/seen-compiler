@@ -37,10 +37,12 @@ pub struct Transl {
 
     // conf.seen
     conf: Text,
+    _type: Text,
     name: Text,
     deps: Text,
     id: Text,
     prebuild: Text,
+    target: Text,
     rust: Text,
     rs: Text,
     python: Text,
@@ -83,7 +85,15 @@ pub struct Transl {
     localhost: Text,
     // title: Text,
     homepage: Text,
-    content:  Text,              
+    content:  Text,          
+
+    // desktop 
+    desktop: Text,
+
+    // mobile
+    mobile: Text,
+    ios: Text,
+    android: Text, 
 
     // html
     label: Text,
@@ -105,10 +115,12 @@ impl Transl {
 
             // conf.seen
             conf:               Text::new(      CONF_AR,                      CONF_EN                         ),            
+            _type:              Text::new(      "نوع",                        "type"                          ),
             name:               Text::new(      "الاسم",                       "name"                          ),
             deps:               Text::new(      "تبعيات",                     "deps"                          ),
             id:                 Text::new(      "معرف",                       "id"                            ),
             prebuild:           Text::new(      "قبل_البناء",                 "prebuild"                      ),
+            target:             Text::new(      "هدف",                        "target"                        ),
             rust:               Text::new(      "رست",                        "rust"                          ),            
             rs:                 Text::new(      "رست",                        "rs"                            ),            
             python:             Text::new(      "بايثون",                     "python"                        ),
@@ -150,6 +162,14 @@ impl Transl {
             // title:              Text::new(      "عنوان",                      "title"                          ),
             homepage:           Text::new(      "ص_رئيسية",                   "homepage"                      ),
             content:            Text::new(      "محتوى",                      "content"                       ),
+
+            // desktop 
+            desktop:            Text::new(      "محتوى",                      "content"                       ),
+
+            // mobile
+            mobile:             Text::new(      "محمول",                      "mobile"                        ),
+            ios:                Text::new(      "آي_أو_إس",                   "ios"                           ),
+            android:            Text::new(      "اندرويد",                    "android"                       ),
 
             // html
             label:              Text::new(      "لصيقة",                      "label"                         ),
@@ -236,6 +256,11 @@ impl Transl {
 
 
     //---------------------
+    //  _type()
+    //--------------------- 
+    pub fn _type(&self) -> String { self.to_str(&self._type) }        
+
+    //---------------------
     //  name()
     //--------------------- 
     pub fn name(&self) -> String { self.to_str(&self.name) }        
@@ -254,6 +279,11 @@ impl Transl {
     //  prebuild()
     //--------------------- 
     pub fn prebuild(&self) -> String { self.to_str(&self.prebuild) }         
+
+    //---------------------
+    //  target()
+    //--------------------- 
+    pub fn target(&self) -> String { self.to_str(&self.target) }         
 
     //---------------------
     //  rust()
@@ -456,6 +486,40 @@ impl Transl {
     //  content()
     //--------------------- 
     pub fn content(&self) -> String { self.to_str(&self.content) }            
+}
+
+//================
+//   Transl
+//    desktop
+//================
+impl Transl {
+
+    //---------------------
+    //  desktop()
+    //--------------------- 
+    pub fn desktop(&self) -> String { self.to_str(&self.desktop) }     
+}
+
+//================
+//   Transl
+//    mobile
+//================
+impl Transl {
+
+    //---------------------
+    //  mobile()
+    //--------------------- 
+    pub fn mobile(&self) -> String { self.to_str(&self.mobile) }     
+
+    //---------------------
+    //  ios()
+    //--------------------- 
+    pub fn ios(&self) -> String { self.to_str(&self.ios) }     
+    
+    //---------------------
+    //  android()
+    //--------------------- 
+    pub fn android(&self) -> String { self.to_str(&self.android) }             
 }
 
 

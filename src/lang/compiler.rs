@@ -1,9 +1,10 @@
 use std::{
     io,
+    fs,
     collections::HashMap, 
     path::{
         PathBuf, 
-    }, 
+    }, process::Child, 
 };   
 
 use crate::{
@@ -13,10 +14,25 @@ use crate::{
             cargo_toml::CargoToml,
             rs_gen::Rust
         }, 
+        react_native::{
+            ReactNative
+        }
 
     }, 
-    transl::transl::Transl, project::conf::Conf
+    transl::transl::Transl, 
+    project::{
+        conf::{
+            Conf, 
+            ConfElement, 
+            Target
+        }, 
+        ProjSettings
+    }, 
+    util::cli::Build,
+    tool::npx::NPX
+
 };
+
 
 use crate::debug::lang::compiler::*;
 
@@ -102,20 +118,14 @@ pub fn to_ast(path: String) -> Vec<ModElement> {
     vec![]
 }
 
-
-
 //================
 //  compile()
 //================
 pub fn compile(
-    lang: Lang,
-    transl: &Transl,
-    home: &PathBuf,
-    proj_name: &String,
-    // proj_dir: &ProjDir,
+    settings: &ProjSettings,
     out_dir: Option<String>,
     paths: Vec<String>,  // FIXME, switch to PathBuf
-    main_mods: Vec<String>
+    main_mods: Vec<String>,
 ) -> Result<(), io::Error> {
 
 	let mut modules = HashMap::from([]);
@@ -127,7 +137,10 @@ pub fn compile(
 		modules.insert(path.clone(), data );
 	}
 
+    // println!("scan..");
     let mut modules = scan(modules);
+
+    // println!("parse..");
     let mut modules = parse(modules);
     // let modules = resolve(modules);  // FIXME, turned off, not planned for first release
     // let modules = type_infer(modules); 
@@ -137,7 +150,9 @@ pub fn compile(
     } else {
         None
     };
-    generate(&lang, &transl, &home, &proj_name, out_dir, &mut modules, &main_mods);
+
+    // println!("generate..");
+    let child_proc = generate(&settings, &out_dir, &mut modules, &main_mods);
 
     Ok(())
 }
@@ -156,13 +171,12 @@ fn scan (
         data.tokens = Some(tokens);
         data.errors = errors;
     }
-
+    #[cfg(debug_assertions)]
     log::debug!("\n{}", debug_tokens(&modules));    
-    print_errors(&modules);
 
+    print_errors(&modules);
     modules    
 }
-
 
 //================
 //  parse()
@@ -180,7 +194,9 @@ fn parse (
         data.errors = errors;
     }
 
-    log::debug!("\n{}", debug_ast(&modules));    
+    #[cfg(debug_assertions)]
+    log::debug!("\n{}", debug_ast(&modules));  
+
     print_errors(&modules);
 
     modules
@@ -201,7 +217,9 @@ fn resolve (
         data.errors = errors;
     }
 
+    #[cfg(debug_assertions)]
     log::debug!("\n{}", debug_resolver(&modules));    
+
     print_errors(&modules);
 
     modules
@@ -213,7 +231,6 @@ fn resolve (
 fn type_infer (
     mut modules: Modules,
 ) -> Modules {
-    
     for data in modules.values_mut() {
         let mut inference = Inference::new();
         let ast = data.ast.take().unwrap();
@@ -224,9 +241,10 @@ fn type_infer (
         data.errors = errors;
     }
 
+    #[cfg(debug_assertions)]
     log::debug!("\n{}", debug_inference(&modules));    
+    
     print_errors(&modules);
-
     modules
 }
 
@@ -245,10 +263,8 @@ fn type_check (
         data.restab = Some(restab);
         data.errors = errors;
     }
-
     // log::debug!("\n{}", debug_inference(&modules));    
     print_errors(&modules);
-
     modules
 }
 
@@ -256,33 +272,100 @@ fn type_check (
 //  generate()
 //================
 fn generate (
-    lang: &Lang,
-    transl: &Transl,
-    home: &PathBuf,
-    name: &String,
-    out_dir: Option<PathBuf>,
+    settings: &ProjSettings,
+    out_dir: &Option<PathBuf>,
     modules: &mut Modules,
-    main_mods: &Vec<String>
-
+    main_mods: &Vec<String>,
 ) {
     let mut build_dir = BuildDir::new(
-        lang,
-        name,
-        out_dir
+        &settings.lang,
+        &settings.proj_name,
+        &out_dir
     );
-
-    build_dir.create_dir_all();
-
+   
     // let seen_conf_path = home.join(transl.conf());
     // let seen_conf_path = format!("{}", seen_conf_path.display());
     // let seen_conf_ast = to_ast(seen_conf_path.clone()); // modules.get(&seen_conf_path).expect(format!("seen.conf is missing: looking for`{}`, available files: `{:?}`", seen_conf_path, modules.keys()).as_str());
+ 
+    match settings.target.as_str() {
+        "ios" | "آي_أو_إس" | 
+        "android" | "اندرويد" => generate_react_native_project(
+            &settings,
+            &mut build_dir,
+            &out_dir,
+            modules,
+            main_mods,
+        ),
+        _ => {
+            build_dir.create_dir_all();
+            generate_rs_project(
+                &settings,
+                &mut build_dir,
+                &out_dir,
+                modules,
+                main_mods,
+            )
+        }
+    }
+}
 
-    let seen_conf = Conf::new(home);
+//================
+//  generate_react_native_project()
+//================
+fn generate_react_native_project (
+    settings: &ProjSettings,
+    mut build_dir: &mut BuildDir,
+    out_dir: &Option<PathBuf>,
+    modules: &mut Modules,
+    main_mods: &Vec<String>,
+) {
+    let npx = NPX::new();
+    
+    let mut work_dir = build_dir.home.clone();
+    work_dir.pop();
+    fs::create_dir_all(&work_dir).expect("expecting dir to be created");
+    npx.react_native_init(
+        &format!("{}", work_dir.display()),
+        &settings.proj_name,
+        settings.redirect
+    );
 
+
+    for (path,module) in modules {
+        let file_name = std::path::PathBuf::from(path.clone());
+        let file_name = file_name.file_stem().expect("expect file stem");
+        let file_name = format!("{}", file_name.to_str().expect("expect str"));
+        
+        let ast= module.ast.as_mut().unwrap();
+        let path = ReactNative::new(
+            &mut build_dir, 
+            settings.redirect
+        ).generate(
+            &settings.proj_name,
+            file_name,
+            path, 
+            &module.lang,
+            ast,
+            &main_mods
+        );
+    }
+
+}    
+
+//================
+//  generate_rs_project()
+//================
+fn generate_rs_project (
+    settings: &ProjSettings,
+    mut build_dir: &mut BuildDir,
+    out_dir: &Option<PathBuf>,
+    modules: &mut Modules,
+    main_mods: &Vec<String>,
+) {
     let mut cargo_toml = CargoToml::new(
         &build_dir.name, 
         &build_dir.home,
-        &seen_conf   
+        &settings.seen_conf   
     );
 
     for (path,module) in modules {
@@ -291,23 +374,18 @@ fn generate (
         let file_name = format!("{}", file_name.to_str().expect("expect str"));
         
         let ast= module.ast.as_mut().unwrap();
-
         let path = Rust::new(
             &mut build_dir, 
-            &mut cargo_toml
+            &mut cargo_toml,
+            settings.redirect
         ).generate(
+            &settings.proj_name,
             file_name,
             path, 
-            // module.lang.ext(), 
             &module.lang,
             ast,
             &main_mods
-        );
-
-        // log::debug!("\n{}", debug_generated_src(&path));        
+        );     
     }
-    cargo_toml.generate();
-    
+    cargo_toml.generate();  
 }
-
-

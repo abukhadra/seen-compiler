@@ -104,7 +104,8 @@ pub enum Expr {
 pub enum BlockElement {
     MainArgs,   // FIXME: this is a workaround, main args are nothing but a Decl
     Decl(Decl),
-    Expr(Expr)
+    Expr(Expr),
+    AutoImpl
 }
 
 //================

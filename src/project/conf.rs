@@ -24,7 +24,7 @@ use crate::lang::{
 		StructLiteral,
 		Expr,
 		BlockElement
-	}
+	}, token::Token
 };
 
 use crate::project::{
@@ -111,7 +111,6 @@ impl Conf {
 	//   elements()
 	//---------------------
 	pub fn elements(
-		// &mut self,
 		transl: &Transl,
 		home: &PathBuf,
 	) -> Vec<ConfElement> {
@@ -135,6 +134,8 @@ impl Conf {
 					let name = t.to_string();
 					if name == transl.deps() {
 						deps(&el, &transl, &stmts, &mut data);
+					} else if name == transl.target() {
+						target(&el, &transl, &stmts, &mut data);						
 					} else if name == transl.rust() || name == transl.rs() {
 						rust(&el, &transl, &stmts, &mut data);
 					} else if name == transl.python() || name == transl.py() {
@@ -215,6 +216,33 @@ fn deps(
 ) {
 	todo!("conf.seen ::  deps");	// TODO
 }
+
+//================
+//   target()
+//================
+// FIXME: for now , limit  to a string that represent a framework
+fn target(
+	el: &ModElement,
+	transl: &Transl,
+	stmts: &Vec<BlockElement>,
+	data: &mut Vec<ConfElement>
+) {
+
+	for stmt in stmts {
+	   match stmt {
+		   BlockElement::Expr(Expr::Ret(_box)) => {
+			   match &**_box {
+					Expr::Str(Token{value: v, ..}) => {
+						data.push( ConfElement::Target(Target(format!("{}", v))) );
+					},
+					_ => panic!("unexpected statement: {:?}", el) 										
+			   }
+		   },
+		   _ => panic!("unexpected statement: {:?}", el) 								
+	   }
+	}	
+}
+
 
 //================
 //   rust()
@@ -500,7 +528,7 @@ pub fn proj_name(
 pub enum ConfElement {
 	Main(Main),
 	Deps(Vec<SeenDep>),
-
+	Target(Target),
 	Rust(Rust),
 	Python(Python),
 	Prebuild(Fn)
@@ -515,6 +543,12 @@ pub struct SeenDep {
 	pub ver: String,
 	pub path: String
 }
+
+//================
+//   Target
+//================
+#[derive(Clone, Debug)]
+pub struct Target(pub String);
 
 //================
 //   Rust

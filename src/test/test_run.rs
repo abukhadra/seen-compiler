@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use indoc::indoc;
 
 use crate::project::build;
+use crate::project::conf::Conf;
+use crate::project::ProjSettings;
 use crate::tool::cargo::Cargo;
 use crate::transl::transl::Transl;
 use crate::util::cli::Compile;
@@ -91,10 +93,23 @@ fn run(
     let transl = Transl::new(&lang);
     // let proj_name = conf::proj_name(&transl, &home);
     let home = PathBuf::from("");
+    let seen_conf = Conf::new(&home);
     let proj_name = String::from("test_run.rs");
-    let build_path = build::build_path(&transl, &home, &proj_name);
+    let target = String::new();
+    let settings = ProjSettings {
+        home, 
+        seen_conf, 
+        lang, 
+        transl, 
+        proj_name, 
+        target, 
+        redirect
+    };
+
+    let build_path = build::build_path(&settings);
     let work_dir = format!("{}", build_path.display());
-    Compile::exec(Some(home));
+
+    Compile::exec(&settings);
     Cargo::new().run(&work_dir, &vec![], redirect);
 }
 

@@ -83,10 +83,17 @@ impl<'a> Lexer<'a> {
                 Lang::Ar => {
                     match c {
                         '؟' => self.add_token(TokenValue::Question),
+                        '٪' => self.add_token(TokenValue::Perc),
+                        ',' => self.ar_eastern_float(),
+                        '.' => self.period_or_doubledot_or_float(),
+                        '،' => self.add_token(TokenValue::Comma),
                         '\\' => self.ar_comment_asgmt_div_bwand(),
                         '/' => self.ar_bwor(),
+                        '؛' => self.add_token(TokenValue::Semicolon),
                         '«' => self.ar_string(),
                         '‹' => self.ar_character(),   
+                        '⎔' => self.add_token(TokenValue::At),
+                        '\u{1EE4D}' => self.add_token(TokenValue::Res),            
                         '0'..='9' => {
                             self.number_western();
                             self.number_postfix();
@@ -102,9 +109,14 @@ impl<'a> Lexer<'a> {
                 Lang::En => {
                     match c {
                         '?' => self.add_token(TokenValue::Question),
+                        '%' => self.add_token(TokenValue::Perc),
+                        ',' => self.add_token(TokenValue::Comma),
+                        '.' => self.period_or_doubledot_or_float(),             
                         '/' => self.en_comment_asgmt_div_bwand(),
                         '\\' => self.en_bwor(),
+                        ';' => self.add_token(TokenValue::Semicolon),
                         '"' => self.en_string(),
+                        '@' => self.add_token(TokenValue::At),  
                         '\'' => self.en_character(),  
                         '0'..='9' => {
                             self.number_en();
@@ -154,22 +166,16 @@ impl<'a> Lexer<'a> {
             '<' => self.lt_or_le(),
             '&' => self.land(),
             '|' => self.bar_lor_pipe(),
-            '.' => self.period_or_float(),             
             ':' => self.colon_or_decl(),   
-            '$' => self.add_token(TokenValue::Dollar),
-            '@' => self.add_token(TokenValue::At),                 
+            '$' => self.add_token(TokenValue::Dollar),               
             '[' => self.add_token(TokenValue::OpenBracket),
             ']' => self.add_token(TokenValue::CloseBracket),
             '(' => self.add_token(TokenValue::OpenParen),
             ')' => self.add_token(TokenValue::CloseParen),
             '{' => self.add_token(TokenValue::OpenCurly),
-            '}' => self.add_token(TokenValue::CloseCurly),
-            ';' => self.add_token(TokenValue::Semicolon),
-            ',' => self.add_token(TokenValue::Comma),
+            '}' => self.add_token(TokenValue::CloseCurly),            
+            
 
-            '\u{1EE4D}' => self.add_token(TokenValue::Res),
-            '⎔' => self.add_token(TokenValue::At),
-            '؛' => self.add_token(TokenValue::Semicolon),
             '⏎' => self.add_token(TokenValue::Ret),
             '✓' => self.add_token(TokenValue::Ok),
             '✗' => self.add_token(TokenValue::Err),
@@ -945,15 +951,33 @@ impl<'a> Lexer<'a> {
     }
 
     //---------------------
-    //  period_or_float()
+    //  ar_eastern_float()
     //---------------------        
-    fn period_or_float(&mut self) {
+    fn ar_eastern_float(&mut self) {
+        let mut value = String::from(self.current);
+        match self.look_ahead {
+            '٠'..='٩' => {
+                value.push_str(self.eastern_fractional().as_str());
+                self.add_token(TokenValue::Float(value));
+            }
+            _ => panic!("ill-formed floating point number"),
+        }
+    }
+
+    //---------------------
+    //  period_or_doubledot_or_float()
+    //---------------------        
+    fn period_or_doubledot_or_float(&mut self) {
         let mut value = String::from(self.current);
         match self.look_ahead {
             '0'..='9' => {
                 value.push_str(self.fractional().as_str());
                 self.add_token(TokenValue::Float(value));
-            }
+            },
+            '.' => {
+                self.skip(1);
+                self.add_token(TokenValue::DoubleDot)
+            },
             _ => self.add_token(TokenValue::Dot),
         }
     }
@@ -1105,6 +1129,20 @@ impl<'a> Lexer<'a> {
         } else {
             self.add_token(TokenValue::Int(v));
         }        
+    }
+
+    //---------------------
+    //  eastern_fractional()
+    //---------------------        
+    fn eastern_fractional(&mut self) -> String {
+        let mut value = String::from("");
+        while !self.expect_eof() {
+            match self.look_ahead {
+                '٠'..='٩' => value.push(self.next()),
+                _ => break,
+            }
+        }
+        value
     }
 
     //---------------------
