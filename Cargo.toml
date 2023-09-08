@@ -1,0 +1,26 @@
+[package]
+name = "seen-compiler"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "seenc"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+opt-level = 1
+strip = true
+
+[dependencies]
+clap = { version = "4.1.8", features = ["derive"] }
+derive = "1.0.0"
+env_logger = "0.10.0"
+features = "0.10.0"
+indoc = "2.0.1"
+log = "0.4.17"
+regex = "1.7.2"
+serde = { version = "1.0.156", features = ["derive"] }
+tap = "1.0.1"
