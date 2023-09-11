@@ -178,7 +178,7 @@ impl ProjDir {
         let code = match self.lang {
             Lang::Ar =>  
 format!(r#"() -> {{
-    الاسم: «{}»
+    {{ الاسم: «{}» }}
 }}
 
 \\ تبعيات -> [
@@ -187,7 +187,7 @@ format!(r#"() -> {{
 "#, self.name),
             Lang::En =>  
 format!(r#"() -> {{
-    name: "{}"
+    {{ name: "{}" }}
 }}
 
 // deps -> [
