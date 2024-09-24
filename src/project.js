@@ -35,6 +35,10 @@ export default class Project {
         this.lang = lang || "en"
     }
 
+    init_ar(src, main_args , target_opts) {
+        this.init(src, main_args, "ar", target_opts)
+    }
+
     get_code() {
         if(!this.gen_code) {
             this.compile()

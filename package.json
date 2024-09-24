@@ -22,7 +22,10 @@
     "scripts": {
         "build": "npm run clean && npm install && vite build && npm run minify",
         "minify": "esbuild scompiler.js --minify --outfile=scompiler.js --allow-overwrite",
-        "clean": "rm -rf ./dist && rm -rf ./scompiler.js && rm -rf ./node_modules"
+        "clean": "rm -rf ./dist && rm -rf ./scompiler.js && rm -rf ./node_modules",
+
+        "ex": "npm run build && node ./examples/hello-world.js",
+        "ex-ar": "npm run build && node ./examples/ar-salam.js"
     },
     "author": "Mustafa Abukhadra",
     "license": "MIT",
