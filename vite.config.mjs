@@ -16,7 +16,6 @@ export default defineConfig({
             entry: resolve(__dirname, 'src/project.js'),
             formats: ['es'],
             name: 'SeenCompiler',
-
             // fileName: 'scompiler',
             fileName: () => 'scompiler.js',
         },          

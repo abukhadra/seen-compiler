@@ -3,28 +3,32 @@
     "version": "0.1.2",
     "type": "module",
     "description": "seen compiler",
-    "files" : ["./"],
-    "keywords" : [
-        "seen" , 
-        "programming language", 
+    "files": [
+        "./"
+    ],
+    "keywords": [
+        "seen",
+        "programming language",
         "compiler",
-        "س" , 
-        "لغة برمجة", 
-        "مترجم" 
-    ],  
+        "س",
+        "لغة برمجة",
+        "مترجم"
+    ],
     "main": "src/project.js",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/abukhadra/seen-compiler.git"
-    },  
+    },
     "scripts": {
-      "build": "npm run clean && npm install && vite build",
-      "clean": "rm -rf ./dist && rm -rf ./scompiler.js && rm -rf ./node_modules"
+        "build": "npm run clean && npm install && vite build && npm run minify",
+        "minify": "esbuild scompiler.js --minify --outfile=scompiler.js --allow-overwrite",
+        "clean": "rm -rf ./dist && rm -rf ./scompiler.js && rm -rf ./node_modules"
     },
     "author": "Mustafa Abukhadra",
     "license": "MIT",
     "homepage": "https://seenlang.org",
     "devDependencies": {
-        "@vitejs/plugin-vue": "^5.1.4"
+        "@vitejs/plugin-vue": "^5.1.4",
+        "esbuild": "0.24.0"
     }
 }
