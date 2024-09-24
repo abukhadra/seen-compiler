@@ -20,12 +20,13 @@
         "url": "git+https://github.com/abukhadra/seen-compiler.git"
     },
     "scripts": {
-        "build": "npm run clean && npm install && vite build && npm run minify",
+        "preinstall" : "npm run clean",
+        "postinstall": "vite build",
+        "prepare" : "npm run minify",
         "minify": "esbuild scompiler.js --minify --outfile=scompiler.js --allow-overwrite",
-        "clean": "rm -rf ./dist && rm -rf ./scompiler.js && rm -rf ./node_modules",
-
-        "ex": "npm run build && node ./examples/hello-world.js",
-        "ex-ar": "npm run build && node ./examples/ar-salam.js"
+        "clean": "rm -rf ./scompiler.js && rm -rf ./node_modules",
+        "ex": "npm install && node ./examples/hello-world.js",
+        "ex-ar": "npm install && node ./examples/ar-salam.js"
     },
     "author": "Mustafa Abukhadra",
     "license": "MIT",
