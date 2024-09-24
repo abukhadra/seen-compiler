@@ -4,12 +4,6 @@
     "type": "module",
     "description": "seen compiler",
     "files" : ["./"],
-    "module": "./scompiler.js",
-    "exports": {
-      ".": {
-        "import": "./scompiler.js"
-      }
-    },
     "keywords" : [
         "seen" , 
         "programming language", 
