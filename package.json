@@ -25,9 +25,13 @@
         "prepare" : "npm run minify",
         "minify": "esbuild scompiler.js --minify --outfile=scompiler.js --allow-overwrite",
         "clean": "rm -rf ./scompiler.js && rm -rf ./node_modules",
-        "ex": "npm install && node ./examples/hello-world.js",
-        "ex-ar": "npm install && node ./examples/ar-salam.js"
+        "ex": "npm i && node ./examples/hello-world.js",
+        "ex-ar": "npm i && node ./examples/ar-salam.js"
     },
+    "dependencies": {
+      "seen-gen-js" : "https://github.com/abukhadra/seen-gen-js",
+      "seen-gen-html" : "https://github.com/abukhadra/seen-gen-html"
+    },  
     "author": "Mustafa Abukhadra",
     "license": "MIT",
     "homepage": "https://seenlang.org",
