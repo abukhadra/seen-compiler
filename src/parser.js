@@ -627,7 +627,7 @@ export default class Parser {
 
     maybe_stmt() {
         if(this.is_eof() || this.is_modifier()) { return } 
-        return   this.maybe_break() || this.maybe_expr() || this.maybe_semicolon()        
+        return   this.maybe_break() || this.maybe_const() || this.maybe_let() || this.maybe_expr() || this.maybe_semicolon()        
     }
 
     req_stmts() {
@@ -667,13 +667,14 @@ export default class Parser {
     }
 
     maybe_const() {
-        if(!this.is_pat()) { return }
+        if(!this.is_const()) { return }
+        this.next()
         const _pat = this.req_pat()
         const t = this.maybe_tannotation()
-        if (t) { this.req_colon() } else { this.req_dcolon() }
-        
+        this.req_asgmt()
         const rhs = this.req_expr()
         const asgmt = new Asgmt(_pat, t, rhs)
+        // const n = new Node("const", "stmt", asgmt)
         const n = new Node("const", "stmt", asgmt)
         return n
     }
@@ -686,21 +687,22 @@ export default class Parser {
         this.req_asgmt()
         const rhs = this.req_expr()
         const asgmt = new Asgmt(_pat, t, rhs)
-        const n = new Node("const", "stmt", asgmt)
+        // const n = new Node("const", "stmt", asgmt)
+        const n = new Node("var", "stmt", asgmt)
         return n
     }
 
-    maybe_var() {
-        if(!this.is_var()) { return }
-        this.next()
-        const _pat = this.req_pat()
-        const t = this.maybe_tannotation()
-        let rhs
-        if(this.maybe_asgmt()) { rhs = this.req_expr() }
-        const v = new Asgmt(_pat, t, rhs)
-        const n = new Node("var", "stmt", v)
-        return n
-    }
+    // maybe_var() {
+    //     if(!this.is_var()) { return }
+    //     this.next()
+    //     const _pat = this.req_pat()
+    //     const t = this.maybe_tannotation()
+    //     let rhs
+    //     if(this.maybe_asgmt()) { rhs = this.req_expr() }
+    //     const v = new Asgmt(_pat, t, rhs)
+    //     const n = new Node("var", "stmt", v)
+    //     return n
+    // }
 
     req_expr() {
         const token = this.current
