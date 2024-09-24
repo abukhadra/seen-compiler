@@ -1,7 +1,7 @@
 import {
     CSS_value_en,
     CSS_str_en,
-} from '../../seen-gen-html/src/ar_html.js'
+} from 'seen-gen-html/gen-html.js'
 
 const HELPERS = `
 //------------------------------------------------------------------------------
