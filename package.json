@@ -1,28 +1,36 @@
 {
-  "name": "seen-compiler",
-  "version": "0.1.2",
-  "description": "seen compiler",
-  "keywords" : [
-    "seen" , 
-    "programming language", 
-    "compiler",
-    "س" , 
-    "لغة برمجة", 
-    "مترجم" 
-  ],  
-  "main": "src/project.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/abukhadra/seen-compiler.git"
-  },  
-  "scripts": {
-    "build": "npm run clean && npm install && vite build && mv ./dist/*.js ./scompiler.js",
-    "clean": "rm -rf ./dist && rm -rf ./scompiler.js && rm -rf ./node_modules"
-  },
-  "author": "Mustafa Abukhadra",
-  "license": "MIT",
-  "homepage": "https://seenlang.org",
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.1.4"
-  }
+    "name": "seen-compiler",
+    "version": "0.1.2",
+    "type": "module",
+    "description": "seen compiler",
+    "files" : ["./"],
+    "module": "./scompiler.js",
+    "exports": {
+      ".": {
+        "import": "./scompiler.js"
+      }
+    },
+    "keywords" : [
+        "seen" , 
+        "programming language", 
+        "compiler",
+        "س" , 
+        "لغة برمجة", 
+        "مترجم" 
+    ],  
+    "main": "src/project.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/abukhadra/seen-compiler.git"
+    },  
+    "scripts": {
+      "build": "npm run clean && npm install && vite build",
+      "clean": "rm -rf ./dist && rm -rf ./scompiler.js && rm -rf ./node_modules"
+    },
+    "author": "Mustafa Abukhadra",
+    "license": "MIT",
+    "homepage": "https://seenlang.org",
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.1.4"
+    }
 }

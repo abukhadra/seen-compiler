@@ -7,18 +7,20 @@ import { viteSingleFile } from "vite-plugin-singlefile"
 export default defineConfig({
     build: {
         target: "ES2022",      
+        outDir: ".",
         emptyOutDir: false,
         assetsInlineLimit: Number.MAX_SAFE_INTEGER,
         cssMinify: true, 
-		    minify: true,        
-        rollupOptions: {
-          input: {
-            main: resolve(__dirname, 'src/project.js'),
-          },
-          output: {
-            dir: './dist',
-          }
-        },
+		    minify: true,      
+        lib: {
+            entry: resolve(__dirname, 'src/project.js'),
+            formats: ['es'],
+            name: 'SeenCompiler',
+
+            // fileName: 'scompiler',
+            fileName: () => 'scompiler.js',
+        },          
+        rollupOptions: {},
       },    
 	plugins: [
     vue(), 
