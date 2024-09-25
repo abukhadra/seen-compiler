@@ -22,7 +22,6 @@
     "scripts": {
         "build" : "npm i && vite build",
         "postbuild" : "npm run minify",        
-        "preinstall" : "npm run clean",
         "minify": "esbuild scompiler.js --minify --outfile=scompiler.js --allow-overwrite",
         "clean": "rm -rf ./scompiler.js && rm -rf ./node_modules",
         "ex": "node ./examples/hello-world.js",
