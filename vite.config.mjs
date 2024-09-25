@@ -19,7 +19,12 @@ export default defineConfig({
             // fileName: 'scompiler',
             fileName: () => 'scompiler.js',
         },          
-        rollupOptions: {},
+        rollupOptions: {
+            external: [
+                "seen-gen-html",
+                "seen-gen-js"
+            ]            
+        },
       },    
 	plugins: [
     vue(), 
