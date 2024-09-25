@@ -20,8 +20,8 @@
         "url": "git+https://github.com/abukhadra/seen-compiler.git"
     },
     "scripts": {
-        "build" : "npm i && vite build",
-        "postbuild" : "npm run minify",        
+        "release" : "vite build",
+        "postrelease" : "npm run minify",        
         "preinstall" : "npm run clean-out",
         "minify": "esbuild scompiler.js --minify --outfile=scompiler.js --allow-overwrite",
         "clean": "npm run clean-out && rm -rf ./node_modules",
