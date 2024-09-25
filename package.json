@@ -29,10 +29,6 @@
         "ex": "node ./examples/hello-world.js",
         "ex-ar": "node ./examples/ar-salam.js"
     },
-    "dependencies": {
-      "seen-gen-js" : "github:abukhadra/seen-gen-js",
-      "seen-gen-html" : "github:abukhadra/seen-gen-html"
-    },  
     "author": "Mustafa Abukhadra",
     "license": "MIT",
     "homepage": "https://seenlang.org",

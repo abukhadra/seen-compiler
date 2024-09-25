@@ -1,4 +1,4 @@
-import JSGen from '../node_modules/seen-gen-js/gen-js.js'
+import JSGen from '../lib/seen-gen-js/gen-js.js'
 
 import {
     to_lowercase,
