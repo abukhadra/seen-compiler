@@ -19,11 +19,7 @@ export default defineConfig({
             // fileName: 'scompiler',
             fileName: () => 'scompiler.js',
         },          
-        rollupOptions: {
-            external: [
-                "/^seen-gen-html:.*/",
-                "/^seen-gen-js:.*/"
-            ]            
+        rollupOptions: {        
         },
       },    
 	plugins: [
