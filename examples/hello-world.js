@@ -1,4 +1,4 @@
-import Project from '../scompiler.js' 
+import {Project} from '../src/main.js' 
 
 let project = new Project()
 project.init(`fn main { println('hello world!')}`)
