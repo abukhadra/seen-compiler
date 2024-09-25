@@ -13,7 +13,7 @@ export default defineConfig({
         cssMinify: true, 
 		    minify: true,      
         lib: {
-            entry: resolve(__dirname, 'src/project.js'),
+            entry: resolve(__dirname, 'src/main.js'),
             formats: ['es'],
             name: 'SeenCompiler',
             // fileName: 'scompiler',

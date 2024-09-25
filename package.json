@@ -14,7 +14,7 @@
         "لغة برمجة",
         "مترجم"
     ],
-    "main": "src/project.js",
+    "main": "src/main.js",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/abukhadra/seen-compiler.git"
