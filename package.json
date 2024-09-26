@@ -22,7 +22,7 @@
     "scripts": {
         "prerelease": "npm i",
         "release": "vite build",
-        "postrelease": "npm run minify && node ./lib/releaes/banner.js",
+        "postrelease": "npm run minify && node ./lib/release/banner.js",
         "preinstall": "npm run clean-out",
         "minify": "esbuild ./dist/scomp.js --minify --outfile=./dist/scomp.js --allow-overwrite",
         "clean": "npm run clean-out && rm -rf ./node_modules && rm -rf ./package-lock.json",
