@@ -26,7 +26,7 @@
         "preinstall": "npm run clean-out",
         "minify": "esbuild ./dist/scomp.js --minify --outfile=./dist/scomp.js --allow-overwrite",
         "clean": "npm run clean-out && rm -rf ./node_modules && rm -rf ./package-lock.json",
-        "clean-out": "rm -rf ./dist/scomp.js",
+        "clean-out": "rm -rf ./dist",
         "ex": "node ./examples/hello-world.js",
         "ar-ex": "node ./examples/ar-salam.js"
     },
