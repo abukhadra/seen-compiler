@@ -20,19 +20,20 @@
         "url": "git+https://github.com/abukhadra/seen-compiler.git"
     },
     "scripts": {
-        "release" : "vite build",
-        "postrelease" : "npm run minify",        
-        "preinstall" : "npm run clean-out",
-        "minify": "esbuild scompiler.js --minify --outfile=scompiler.js --allow-overwrite",
+        "prerelease": "npm i",
+        "release": "vite build",
+        "postrelease": "npm run minify && node ./lib/releaes/banner.js",
+        "preinstall": "npm run clean-out",
+        "minify": "esbuild ./dist/scomp.js --minify --outfile=./dist/scomp.js --allow-overwrite",
         "clean": "npm run clean-out && rm -rf ./node_modules && rm -rf ./package-lock.json",
-        "clean-out" : "rm -rf ./scompiler.js",
+        "clean-out": "rm -rf ./dist/scomp.js",
         "ex": "node ./examples/hello-world.js",
-        "ex-ar": "node ./examples/ar-salam.js"
+        "ar-ex": "node ./examples/ar-salam.js"
     },
     "dependencies": {
-        "seen-gen-html" : "github:abukhadra/seen-gen-html",
-        "seen-gen-js" : "github:abukhadra/seen-gen-js"
-      },        
+        "seen-gen-html": "github:abukhadra/seen-gen-html",
+        "seen-gen-js": "github:abukhadra/seen-gen-js"
+    },
     "author": "Mustafa Abukhadra",
     "license": "MIT",
     "homepage": "https://seenlang.org",
