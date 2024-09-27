@@ -69,7 +69,6 @@ export default class Parser {
 
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
         }
-        console.log(JSON.stringify(this.ast))
     }
 
     next(nl) {        
