@@ -59,16 +59,17 @@ export default class Parser {
             let parsed = false
             if(this.maybe_attrs()) {
                 this.maybe_modifier()
-                parsed = this.maybe_typedef() || this.maybe_consts_or_fns() 
+                parsed = this.maybe_typedef() || this.maybe_global_const() || this.maybe_global_fn()
             } else if(this.is_modifier()) {
                 this.maybe_modifier()
-                parsed = this.maybe_consts_or_fns() || this.maybe_typedef() 
+                parsed = this.maybe_global_const() || this.maybe_global_fn()  || this.maybe_typedef() 
             } else {
-                parsed = this.maybe_use() || this.maybe_consts_or_fns() || this.maybe_typedef()  
+                parsed = this.maybe_use() || this.maybe_global_const() || this.maybe_global_fn() || this.maybe_typedef()  
             }
 
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
         }
+        console.log(JSON.stringify(this.ast))
     }
 
     next(nl) {        
@@ -666,6 +667,25 @@ export default class Parser {
         return n
     }
 
+
+    maybe_global_const() {
+        let c = this.maybe_const()
+        if(c) {
+            this.ast.push(c) 
+            return true 
+         } 
+         return false
+    }
+
+    maybe_global_fn() {
+        let fn = this.maybe_fn()
+        if(fn) {
+            this.ast.push(fn) 
+            return true 
+         } 
+         return false
+    }    
+
     maybe_const() {
         if(!this.is_const()) { return }
         this.next()
@@ -674,7 +694,6 @@ export default class Parser {
         this.req_asgmt()
         const rhs = this.req_expr()
         const asgmt = new Asgmt(_pat, t, rhs)
-        // const n = new Node("const", "stmt", asgmt)
         const n = new Node("const", "stmt", asgmt)
         return n
     }
@@ -687,22 +706,9 @@ export default class Parser {
         this.req_asgmt()
         const rhs = this.req_expr()
         const asgmt = new Asgmt(_pat, t, rhs)
-        // const n = new Node("const", "stmt", asgmt)
         const n = new Node("var", "stmt", asgmt)
         return n
     }
-
-    // maybe_var() {
-    //     if(!this.is_var()) { return }
-    //     this.next()
-    //     const _pat = this.req_pat()
-    //     const t = this.maybe_tannotation()
-    //     let rhs
-    //     if(this.maybe_asgmt()) { rhs = this.req_expr() }
-    //     const v = new Asgmt(_pat, t, rhs)
-    //     const n = new Node("var", "stmt", v)
-    //     return n
-    // }
 
     req_expr() {
         const token = this.current
@@ -1615,23 +1621,6 @@ export default class Parser {
         const n = new Node("type", "def", _t)
         this.ast.push(n)
         return true
-    }
-
-    maybe_consts_or_fns() {
-        let parsed = false
-        while(true) {
-            // if(this.is_const()) {
-            if(this.is_pat()) {
-                this.ast.push(this.maybe_const())
-                parsed = true
-            } else if(this.is_fn()) {
-                this.ast.push(this.maybe_fn())
-                parsed = true
-            } else {
-                break
-            }
-        }
-        return parsed
     }
     
     implicit_return(_stmts) {
