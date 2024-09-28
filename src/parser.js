@@ -1,6 +1,4 @@
 import {
-    get_symtab_fns, 
-    get_symtab_structs,
     insert_symtab_fns,
     insert_symtab_structs,
 } from './symtab.js'
