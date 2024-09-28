@@ -1,8 +1,8 @@
 export {default as Project} from './project.js'
 export {default as HELPERS} from './helper.js'
 export {
-    get_symtab_fns, 
-    get_symtab_structs,
+    symtab_has_fn, 
+    symtab_has_struct,
 } from './symtab.js'
 export {
     pprint,
