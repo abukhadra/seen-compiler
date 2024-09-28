@@ -1,6 +1,9 @@
 export {default as Project} from './project.js'
-export {funcs as symtab_funcs, structs as symtab_structs} from './symtab.js'
 export {default as HELPERS} from './helper.js'
+export {
+    get_symtab_fns, 
+    get_symtab_structs,
+} from './symtab.js'
 export {
     pprint,
     to_maghrib_num, 

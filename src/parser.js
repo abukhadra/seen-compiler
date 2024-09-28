@@ -1,4 +1,9 @@
-import {funcs, structs} from './symtab.js'
+import {
+    get_symtab_fns, 
+    get_symtab_structs,
+    insert_symtab_fns,
+    insert_symtab_structs,
+} from './symtab.js'
 
 import {
     Mod,
@@ -1527,7 +1532,7 @@ export default class Parser {
 
     req_fn() {
         const name = this.req_id()
-        funcs.push(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
+        insert_symtab_fns(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
         const params = this.maybe_fn_params()
         const ret_types = this.maybe_fn_ret_types()
         if(this.is_open_curly()) {
@@ -1604,7 +1609,7 @@ export default class Parser {
         if(!this.is_typedef()) { return }
         this.next()
         const id = this.req_id()
-        structs.push(id.v[1])
+        insert_symtab_structs(id.v[1])
         let fields  = maybe_fields() || []
         const children = maybe_children()
         if(!(fields || children)) { return }        
