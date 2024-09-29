@@ -1,4 +1,4 @@
-const AR_KEYWORD = {
+export const AR_KEYWORD = {
     "???" : "as",
     "صحيح": "true",
     "غير_صحيح": "false",
@@ -16,7 +16,7 @@ const AR_KEYWORD = {
     "نفذ" : "do",
 }
 
-const EN_KEYWORD = { 
+export const EN_KEYWORD = { 
     "as" : "???",
     "true" : "صحيح",
     "false" : "غير_صحيح",
