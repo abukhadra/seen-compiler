@@ -1,15 +1,12 @@
 import { Err } from './err.js'
 
-import { 
-    MASHRIQ_DIGIT, MAGHRIB_DIGIT,
-    ANY_NUM , ANY_LETTER,
-    AR_KEYWORD, EN_KEYWORD,
-    TATWEEL,    
-} from './constants.js'
+import { AR_KEYWORD, EN_KEYWORD } from './constants.js'
 
 import {    
+    MASHRIQ_DIGIT, MAGHRIB_DIGIT,
+    ANY_NUM , ANY_LETTER,
+    TATWEEL,    
     is_none , contains,
-    pprint, 
     clone
 }  from '../lib/sutils.js'
 
