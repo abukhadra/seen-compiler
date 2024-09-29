@@ -11,7 +11,7 @@ import {
     is_none , contains,
     pprint, 
     clone
-} from './util.js'
+}  from '../lib/sutils.js'
 
 class Loc { line ; column ;  constructor(line, column) { this.line = line ; this.column = column ; return this } }
 class Token { 

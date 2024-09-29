@@ -1,7 +1,7 @@
 import Lexer from './lexer.js'
 import Parser from './parser.js'
 import Gen from './generate.js'
-import { is_empty, pprint, panic } from './util.js'
+import { is_empty, pprint, panic }  from '../lib/sutils.js'
 
 export default class Project {
     src
@@ -11,6 +11,7 @@ export default class Project {
     lang
     tokens
     ast
+    symtab
     gen_code
 
     constructor(src, main_args, target, target_opts, lang, tokens, ast, symtab, transltab, gen_code) {
@@ -68,6 +69,7 @@ export default class Project {
         parser.init(this.tokens)
         parser.run()
         this.ast = parser.ast
+        this.symtab = parser.symtab
         if(!is_empty(parser.errs)) {
             pprint(parser.errs)
             panic("")
@@ -76,7 +78,7 @@ export default class Project {
 
     generate(target) {
         const gen = new Gen()
-        gen.init(this.ast, this.main_args, target, this.target_opts)
+        gen.init(this.ast, this.symtab, this.main_args, target, this.target_opts)
         this.gen_code = gen.run()
     }    
 }

@@ -1,4 +1,4 @@
-import {regexp} from './util.js'
+import {regexp}  from '../lib/sutils.js'
 
 const MASHRIQ_DIGIT = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'] 
 const MAGHRIB_DIGIT = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] 

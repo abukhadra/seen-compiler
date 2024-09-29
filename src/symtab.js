@@ -1,15 +1,18 @@
-const fns = []            // FIXME: workaround, storing fn names here , until name resolution  is complete.
-const structs = []          // FIXME: workaround , just like funcs
+// FIXME: workaround, storing fn names here , until name resolution  is complete.
 
-function symtab_has_fn(fn) { return fns.includes(fn)}
-function symtab_has_struct(struct) { return structs.includes(struct)}
+class Symtab {
+    fns
+    structs
+    constructor() {
+        this.fns = []
+        this.structs = []
+    }
 
-function insert_symtab_fns(fn) { fns.push(fn)}
-function insert_symtab_structs(struct) { structs.push(struct) }
+    insert_fn(fn) { this.fns.push(fn)}
+    insert_struct(struct) { this.structs.push(struct) }
+
+}
 
 export { 
-    symtab_has_fn, 
-    symtab_has_struct, 
-    insert_symtab_fns, 
-    insert_symtab_structs
+    Symtab
 }

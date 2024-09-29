@@ -1,7 +1,4 @@
-import {
-    insert_symtab_fns,
-    insert_symtab_structs,
-} from './symtab.js'
+import {Symtab} from './symtab.js'
 
 import {
     Mod,
@@ -29,7 +26,7 @@ import {
     replace ,
     clone,
     panic,    
-} from './util.js'
+} from  from '../lib/sutils.js'
 
 const BIN_OP            = ["+", "-", "*", "/" , "[", "~=", "::", ":=", "=", "+=", "-=", "*=", "/=", "|=", "&=", "==", "!=", ">", ">=", "<", "<=", "|", "||", "|>", "||>", ":>", "&", "&&", ".", ".."] 
 const PREFIX_UNI_OP     = [".", "!", "not", "-", "+"] 
@@ -42,7 +39,7 @@ export default class Parser {
     skipped_new_line
     current
     ast
-    tabs
+    symtab
     attrs
     errs
     
@@ -52,6 +49,7 @@ export default class Parser {
         this.skipped_new_line = false
         this.current = null
         this.ast = []
+        this.symtab = new Symtab()
         this.attrs = []
         this.errs = []
     }
@@ -1530,7 +1528,7 @@ export default class Parser {
 
     req_fn() {
         const name = this.req_id()
-        insert_symtab_fns(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
+        symtab.insert_fn(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
         const params = this.maybe_fn_params()
         const ret_types = this.maybe_fn_ret_types()
         if(this.is_open_curly()) {
@@ -1607,7 +1605,7 @@ export default class Parser {
         if(!this.is_typedef()) { return }
         this.next()
         const id = this.req_id()
-        insert_symtab_structs(id.v[1])
+        symtab.symtab_struct(id.v[1])
         let fields  = maybe_fields() || []
         const children = maybe_children()
         if(!(fields || children)) { return }        
