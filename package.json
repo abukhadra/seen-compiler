@@ -20,6 +20,8 @@
         "url": "git+https://github.com/abukhadra/seen-compiler.git"
     },
     "scripts": {
+        "predevrelease": "npm i",
+        "devreleases" : "vite build",        
         "prerelease": "npm i",
         "release": "vite build",
         "postrelease": "npm run minify && node ./lib/release/banner.js",
