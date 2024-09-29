@@ -1605,7 +1605,7 @@ export default class Parser {
         if(!this.is_typedef()) { return }
         this.next()
         const id = this.req_id()
-        this.symtab.symtab_struct(id.v[1])
+        this.symtab.insert_struct(id.v[1])
         let fields  = maybe_fields() || []
         const children = maybe_children()
         if(!(fields || children)) { return }        
