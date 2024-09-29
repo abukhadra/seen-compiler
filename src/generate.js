@@ -1,4 +1,4 @@
-import {JSGen} from '../lib/sgen-js.js'
+import {HtmlCssJSGen} from '../lib/sgen-html-css-js.js'
 
 import {
     to_lowercase,
@@ -23,11 +23,10 @@ export default class Gen {
     run() {
         let gen
         switch(to_lowercase(this.target)) {
-            case "js": gen = new JSGen(); break
+            case "js": gen = new HtmlCssJSGen(); break
             default: panic("target \"" + this.target + "\" is not supported") ; break
         }
-        gen.init(this.ast, this.symtab, this.main_args, this.target_opts)
-        return gen.run()
+        return gen.run(this.ast, this.symtab, this.main_args, this.target_opts)
     }
 }
 
