@@ -1528,7 +1528,7 @@ export default class Parser {
 
     req_fn() {
         const name = this.req_id()
-        symtab.insert_fn(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
+        this.symtab.insert_fn(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
         const params = this.maybe_fn_params()
         const ret_types = this.maybe_fn_ret_types()
         if(this.is_open_curly()) {
@@ -1605,7 +1605,7 @@ export default class Parser {
         if(!this.is_typedef()) { return }
         this.next()
         const id = this.req_id()
-        symtab.symtab_struct(id.v[1])
+        this.symtab.symtab_struct(id.v[1])
         let fields  = maybe_fields() || []
         const children = maybe_children()
         if(!(fields || children)) { return }        
