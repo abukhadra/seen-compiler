@@ -10,7 +10,14 @@ import {
     clone
 }  from '../lib/sutils.js'
 
-class Loc { line ; column ;  constructor(line, column) { this.line = line ; this.column = column ; return this } }
+class Loc { line ; column ;  
+    constructor(line, column) { 
+        this.line = line 
+        this.column = column 
+        return this 
+    } 
+}
+
 class Token { 
     v ; loc 
     constructor(v, loc) {
@@ -31,20 +38,6 @@ export default class Lexer {
     current
     lookbehind
     ignore_cmts_ws
-
-    constructor(lang, code, start_loc, end_loc, tokens, errs, current_index, current, lookbehind, ignore_cmts_ws) {
-        this.lang = lang
-        this.code = code
-        this.start_loc = start_loc
-        this.end_loc = end_loc
-        this.tokens = tokens
-        this.errs = errs
-        this.current_index = current_index
-        this.current = current
-        this.lookbehind = lookbehind
-        this.ignore_cmts_ws = ignore_cmts_ws
-        return this
-    }
 
     init(lang, code, ignore_cmts_ws) {
         this.lang = lang

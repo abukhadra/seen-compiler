@@ -1,3 +1,11 @@
+export const SUPPORTED_GEN = [
+    "js",
+    "node",
+    "react-native",
+    "html",
+    "css"
+]
+
 export const AR_KEYWORD = {
     "???" : "as",
     "صحيح": "true",

@@ -1,1 +1,2 @@
-export {default as Project} from './project.js'
+export {default as Compiler} from './compiler.js'
+

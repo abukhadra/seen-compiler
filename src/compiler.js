@@ -1,9 +1,10 @@
 import Lexer from './lexer.js'
 import Parser from './parser.js'
+import Semantic from './semantic.js'
 import Gen from './generate.js'
 import { is_empty, pprint, panic }  from '../lib/sutils.js'
 
-export default class Project {
+export default class Compiler {
     src
     main_args
     target
@@ -13,44 +14,31 @@ export default class Project {
     ast
     symtab
     gen_code
-
-    constructor(src, main_args, target, target_opts, lang, tokens, ast, symtab, transltab, gen_code) {
-        this.src = src
-        this.main_args = main_args
-        this.target = target
-        this.target_opts = target_opts
-        this.lang = lang
-        this.tokens = tokens
-        this.ast = ast
-        this.symtab = symtab
-        this.transltab = transltab
-        this.gen_code = gen_code
-        return this
-    }    
-
+    
     init(src, main_args, lang, target_opts) {
         this.src = src
         this.main_args = main_args
-        this.target = "js"
+        this.target = target_opts && target_opts.target || "js"
         this.target_opts = target_opts || {}        
         this.lang = lang || "en"
     }
 
     init_ar(src, main_args , target_opts) {
-        this.init(src, main_args, "ar", target_opts)
+        return this.init(src, main_args, "ar", target_opts)
     }
 
-    get_code() {
+    async get_code() {
         if(!this.gen_code) {
-            this.compile()
+            await this.run()
         }
         return this.gen_code
     }
 
-    compile() {        
+    async run() {        
         this.scan(true)        
         this.parse()
-        this.generate(this.target)
+        // this.semantic()
+        await this.generate(this.target)
     }
 
     scan(ignore_cmts_ws) {        
@@ -76,9 +64,19 @@ export default class Project {
         }        
     }
 
-    generate(target) {
+    semantic() { 
+        const semantic = new Semantic(this.ast, this.symtab)
+        semantic.run() 
+        if(!is_empty(semantic.errs)) {
+            pprint(semantic.errs)
+            panic("")
+        }        
+    }
+
+    async generate(target) {
         const gen = new Gen()
         gen.init(this.ast, this.symtab, this.main_args, target, this.target_opts)
-        this.gen_code = gen.run()
+        gen.set_lang(this.lang)
+        this.gen_code = await gen.run()
     }    
 }

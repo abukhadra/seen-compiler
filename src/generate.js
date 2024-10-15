@@ -1,5 +1,5 @@
 import {HtmlCssJSGen} from '../lib/sgen-html-css-js.js'
-
+import { SUPPORTED_GEN } from './constants.js'
 import {
     to_lowercase,
     panic,    
@@ -11,6 +11,7 @@ export default class Gen {
     main_args
     target
     target_opts
+    lang
 
     init(ast, symtab, main_args, target, target_opts) {
         this.ast = ast
@@ -20,13 +21,24 @@ export default class Gen {
         this.target_opts = target_opts
     }
 
-    run() {
+    // FIXME: setting lang separately , to avoid breaking the code for current release ,
+    //              need to refactor later.
+    set_lang(lang) { this.lang = lang }
+
+    async run() {
         let gen
-        switch(to_lowercase(this.target)) {
-            case "js": gen = new HtmlCssJSGen(); break
-            default: panic("target \"" + this.target + "\" is not supported") ; break
-        }
-        return gen.run(this.ast, this.symtab, this.main_args, this.target_opts)
+        const target = to_lowercase(this.target)
+        if(target === 'js') {  gen = new HtmlCssJSGen()  } 
+        else if (SUPPORTED_GEN.includes(target)) { 
+            const {default: Gen} = await import(this.target_opts.deps.path)
+            gen = new Gen()      
+        } else { panic("target \"" + this.target + "\" is not supported") }
+        return gen.run(
+            this.lang || en,
+            this.ast, 
+            this.symtab, 
+            this.main_args, 
+            this.target_opts
+        )
     }
 }
-
