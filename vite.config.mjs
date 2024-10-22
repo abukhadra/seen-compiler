@@ -3,8 +3,6 @@ import pkg from './package.json'
 import { defineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
 import { viteSingleFile } from "vite-plugin-singlefile"
-import { nodePolyfills } from 'vite-plugin-node-polyfills'
-
 
 export default defineConfig({
     build: {
@@ -20,7 +18,7 @@ export default defineConfig({
             name: 'SeenCompiler',
             fileName: () => 'scomp.js',
         },          
-        rollupOptions: {},
+        rollupOptions: {}
       },    
 	plugins: [
     vue(), 
@@ -29,8 +27,5 @@ export default defineConfig({
         deleteInlinedFiles: true,    
         removeViteModuleLoader: true, 
     }),
-    nodePolyfills({
-        include: ['path']
-    })
   ],
 })
