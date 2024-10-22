@@ -21,7 +21,7 @@
     },
     "scripts": {
         "predevrelease": "npm i",
-        "devreleases" : "vite build",        
+        "devreleases": "vite build",
         "prerelease": "npm i",
         "release": "vite build",
         "postrelease": "npm run minify && node ./lib/release/banner.js",
@@ -37,7 +37,8 @@
     "homepage": "https://seenlang.org",
     "devDependencies": {
         "@vitejs/plugin-vue": "^5.1.4",
-        "vite-plugin-singlefile": "^2.0.2",
-        "esbuild": "0.24.0"
+        "esbuild": "0.24.0",
+        "vite-plugin-node-polyfills": "^0.2.0",
+        "vite-plugin-singlefile": "^2.0.2"
     }
 }
