@@ -1,3 +1,4 @@
+import {pathToFileURL} from 'url'
 import {HtmlCssJSGen} from '../lib/sgen-html-css-js.js'
 import { SUPPORTED_GEN } from './constants.js'
 import {
@@ -30,7 +31,7 @@ export default class Gen {
         const target = to_lowercase(this.target)
         if(target === 'js') {  gen = new HtmlCssJSGen()  } 
         else if (SUPPORTED_GEN.includes(target)) { 
-            const {default: Gen} = await import(this.target_opts.deps.path)
+            const {default: Gen} = await import(pathToFileURL(this.target_opts.deps.path))
             gen = new Gen()      
         } else { panic("target \"" + this.target + "\" is not supported") }
         return gen.run(
