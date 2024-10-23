@@ -1266,19 +1266,25 @@ export default class Parser {
             return args
         }
     
-        const  maybe_children = (id) => {
-            if(!this.is_open_curly()) { return }
+        const  maybe_children = () => {
+            if(!this.is_dcolon()) { return }
             this.next()
-            const children = []
-            while (!(this.is_eof() || this.is_close_curly())) {
-                const expr = this.maybe_expr()
-                if(!expr) { break }
-                children.push(expr) 
-                this.optional_comma()
-            }        
-            this.req_close_curly()
-            children.push()
-            return children
+            if(this.is_open_curly()) { 
+                this.next()
+                const children = []
+                while (!(this.is_eof() || this.is_close_curly())) {
+                    const expr = this.maybe_expr()  // FIXME: for typedef: this should be types not exprs
+                    if(!expr) { break }
+                    children.push(expr) 
+                    this.optional_comma()
+                }        
+                this.req_close_curly()
+                children.push()
+                return children
+            } else {
+                children.push(this.req_expr())
+                return children
+            }
         }
 
         const args  = maybe_args()
