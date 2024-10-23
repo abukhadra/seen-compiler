@@ -1622,7 +1622,7 @@ export default class Parser {
         const children = maybe_children()
         if(!(fields || children)) { return }        
         if(children) {
-            const id = {v:['id','__children'], loc:{"line":0,"column":0}}
+            const id = {v:['id','children'], loc:{"line":0,"column":0}}
             const t = {"id":"[","t":"t","v":{"t":{"id":"t","t":"t","v":{"t":{"v":["id","any"],"loc":{"line":0,"column":0}}}}}}
             const field = new Node("field", "expr", [id, t])
             fields.push(field)
