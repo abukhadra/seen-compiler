@@ -38,7 +38,6 @@
     "devDependencies": {
         "@vitejs/plugin-vue": "^5.1.4",
         "esbuild": "0.24.0",
-        "vite-plugin-node-polyfills": "^0.2.0",
         "vite-plugin-singlefile": "^2.0.2"
     }
 }
