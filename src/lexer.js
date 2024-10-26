@@ -646,11 +646,7 @@ export default class Lexer {
         while(!this.expect_eof()) {
             if(this.expect_letter() || this.expect_num() || this.expect_underscore()) {
                 if(this.expect_tatweel()) {
-                    if(!contains(["ف", "ل", "اه", "ك"], v)) {
-                        this.skip(1)
-                    } else {
-                        v += this.next()
-                    }
+                    this.skip(1)
                 } else {
                     v += this.next()
                 }
