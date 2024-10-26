@@ -690,7 +690,7 @@ export default class Parser {
         if(!this.is_at()) { return }
         this.next()
         let trait = this.maybe_id()
-        req_open_paren() 
+        this.req_open_paren() 
         let instance = this.req_id() 
         this.req_colon 
         let type = this.req_id() 
