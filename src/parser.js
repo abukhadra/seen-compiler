@@ -707,7 +707,7 @@ export default class Parser {
             fns.push(this.req_fn()) 
         }
 
-        const receiver = Receiver(trait, instance, type, fns)
+        const receiver = new Receiver(trait, instance, type, fns)
         const n = new Node("receiver", "def", receiver)
         this.symtab.insert_receiver(type.v[1], n) // FIXME: temp
         this.ast.push(n) 
