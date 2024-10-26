@@ -692,7 +692,7 @@ export default class Parser {
         let trait = this.maybe_id()
         this.req_open_paren() 
         let instance = this.req_id() 
-        this.req_colon 
+        this.req_colon() 
         let type = this.req_id() 
         this.req_close_paren()
         let fns = []
