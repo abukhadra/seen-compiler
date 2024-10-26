@@ -26,7 +26,7 @@ export class Symtab {
       const fns = _fns.map(fn => [fn,instance])
     
       if(!this.receivers[id]) { 
-        this.receivers[id] = 
+        this.receivers[id] = fns
       } else { 
         this.receivers[id] = [...this.receivers[id] , ...fns]
       } 
