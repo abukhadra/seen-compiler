@@ -804,7 +804,8 @@ export default class Lexer {
             case '>': this.ge() || this.gt() ; break
             case '<': this.le() || this.lt() ; break
             case ':': this.deconstruct() || this.decl() || this.dcolon() || this.colon() ; break
-            case '`': this.transl() ; break                
+            case '`': this.transl() ; break         
+            case '@': this.add_token('@') ; break       
             case '$': this.add_token("$") ; break
             case '[': this.add_token("[") ; break
             case ']': this.add_token("]") ; break

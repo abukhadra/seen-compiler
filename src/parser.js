@@ -60,10 +60,12 @@ export default class Parser {
         while(!this.is_eof()) { if(! this.maybe_use() ) {break } }
 
         while(!this.is_eof()) {
-            let parsed = false
-            this.maybe_attrs()
-            this.maybe_modifier()
-            parsed = this.maybe_typedef() || this.maybe_global_const() || this.maybe_global_fn() || this.maybe_receiver()
+            let parsed = this.maybe_global_const()
+            if(!parsed) {
+                this.maybe_attrs()
+                this.maybe_modifier()
+                parsed = this.maybe_global_fn() || this.maybe_typedef() ||  this.maybe_receiver()    
+            }
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
         }
     }
