@@ -21,6 +21,7 @@ export const AR_KEYWORD = {
     "سمة": "trait",
     "اعد": "return",
     "نفذ" : "do",
+    "لا_شيء" : "void" 
 }
 
 export const EN_KEYWORD = { 
@@ -38,4 +39,5 @@ export const EN_KEYWORD = {
     "trait" : "سمة",
     "return" : "اعد",
     "do" : "نفذ",
+    "void" : "لا_شيء"
 }

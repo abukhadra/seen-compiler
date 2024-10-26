@@ -140,6 +140,7 @@ export default class Parser {
     is_thin_arrow() { return this.current.v === "->" }
     is_thick_arrow() { return this.current.v === "=>" }
     is_tilde() { return this.current.v === "~" }
+    is_void() { return this.is_keyword("void") }
     is_or() { return this.is_keyword("or") }
     is_and() { return this.is_keyword("and") }
     is_not() { return this.is_keyword("not") }
@@ -1021,14 +1022,14 @@ export default class Parser {
         }
     }
 
-    maybe_unit() {
-        if(this.is_open_paren() && this.expect_close_paren()) {
-            this.next()
-            this.next()
-            const n = new Node("()", "expr", "()")
-            return n
-        }
-    }
+    // maybe_unit() {
+    //     if(this.is_open_paren() && this.expect_close_paren()) {
+    //         this.next()
+    //         this.next()
+    //         const n = new Node("()", "expr", "()")
+    //         return n
+    //     }
+    // }
 
     // FIXME: a workaround that only handles using id params
     maybe_afn(els) {
@@ -1354,7 +1355,7 @@ export default class Parser {
     }
 
     maybe_prim() {
-        let expr = this.maybe_unit()
+        // let expr = this.maybe_unit()
         if(!expr) { expr = this.maybe_tuple_afn_group() }
         if(!expr) { expr = this.maybe_prefix_uni_op() }
         if(!expr) { expr = this.maybe_call_or_ref() }
