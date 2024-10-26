@@ -697,7 +697,10 @@ export default class Parser {
         this.req_close_paren()
         let fns = []
         if(this.maybe_open_curly() ){
-            while(!this.is_eof() || this.is_close_curly()) { fns.push(this.req_fn()) }
+            while(!this.is_eof() || !this.is_close_curly()) { 
+                let fn = this.maybe_fn()
+                if(fn) { fns.push(fn)}
+            }
             this.req_close_curly()
         } else { 
             fns.push(this.req_fn()) 
