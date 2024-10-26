@@ -8,6 +8,7 @@ import {
     Fn,
     FnParam,
     TypeDef,
+    Receiver,
     StructLEl,
     Asgmt,
     When,
