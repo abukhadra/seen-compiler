@@ -19,7 +19,7 @@ export const AR_KEYWORD = {
     "نوع": "type",
     "مستعار" : "alias",
     "سمة": "trait",
-    "رد": "return",
+    "اعد": "return",
     "نفذ" : "do",
 }
 
@@ -36,6 +36,6 @@ export const EN_KEYWORD = {
     "type" : "نوع",
     "alias" : "مستعار",
     "trait" : "سمة",
-    "return" : "رد",
+    "return" : "اعد",
     "do" : "نفذ",
 }
