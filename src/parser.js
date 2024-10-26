@@ -1022,6 +1022,13 @@ export default class Parser {
         }
     }
 
+    maybe_void() {
+        if(this.is_void()) {
+            this.next() 
+            const n = new Node('void','expr') 
+            return n
+        }
+    }
     // maybe_unit() {
     //     if(this.is_open_paren() && this.expect_close_paren()) {
     //         this.next()
@@ -1356,6 +1363,7 @@ export default class Parser {
 
     maybe_prim() {
         // let expr = this.maybe_unit()
+        let expr = this.maybe_void()
         if(!expr) { expr = this.maybe_tuple_afn_group() }
         if(!expr) { expr = this.maybe_prefix_uni_op() }
         if(!expr) { expr = this.maybe_call_or_ref() }
