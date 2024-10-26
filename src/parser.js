@@ -42,7 +42,7 @@ export default class Parser {
     symtab
     attrs
     errs
-    
+
     init(tokens) {
         this.tokens = tokens
         this.current_index = -1
@@ -56,18 +56,14 @@ export default class Parser {
 
     run() {
         this.next()
+
+        while(!this.is_eof()) { if(! this.maybe_use() ) {break } }
+
         while(!this.is_eof()) {
             let parsed = false
-            if(this.maybe_attrs()) {
-                this.maybe_modifier()
-                parsed = this.maybe_typedef() || this.maybe_global_const() || this.maybe_global_fn()
-            } else if(this.is_modifier()) {
-                this.maybe_modifier()
-                parsed = this.maybe_global_const() || this.maybe_global_fn()  || this.maybe_typedef() 
-            } else {
-                parsed = this.maybe_use() || this.maybe_global_const() || this.maybe_global_fn() || this.maybe_typedef()  
-            }
-
+            this.maybe_attrs()
+            this.maybe_modifier()
+            parsed = this.maybe_typedef() || this.maybe_global_const() || this.maybe_global_fn() || this.maybe_receiver()
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
         }
     }
@@ -117,6 +113,7 @@ export default class Parser {
     is_eof() { return this.current.v === "$eof" }
     is_newline() { return this.skipped_new_line }
     is_asterisk() { return this.current.v === "*" }
+    is_at() { return this.current.v === "@" }
     is_asgmt() { return this.current.v === "=" }
     is_hash() { return this.current.v === "--" }
     is_percent() { return this.current.v === "%" }
@@ -686,6 +683,30 @@ export default class Parser {
          } 
          return false
     }    
+
+    maybe_receiver() {
+        if(!this.is_at()) { return }
+        this.next()
+        let trait = this.maybe_id()
+        req_open_paren() 
+        let instance = this.req_id() 
+        this.req_colon 
+        let type = this.req_id() 
+        this.req_close_paren()
+        let fns = []
+        if(this.maybe_open_curly() ){
+            while(!this.is_eof() || this.is_close_curly()) { fns.push(this.req_fn()) }
+            this.req_close_curly()
+        } else { 
+            fns.push(this.req_fn()) 
+        }
+
+        const receiver = Receiver(trait, instance, type, fns)
+        const n = new Node("receiver", "def", receiver)
+        this.symtab.insert_receiver(type.v[1], n) // FIXME: temp
+        this.ast.push(n) 
+
+    }
 
     maybe_const() {
         if(!this.is_const()) { return }
@@ -1641,6 +1662,7 @@ export default class Parser {
         const _t = new TypeDef(id, fields, children)
         const n = new Node("type", "def", _t)
         this.ast.push(n)
+
         return true
     }
     

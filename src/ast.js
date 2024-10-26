@@ -7,6 +7,14 @@ class TypeDef       { name; fields ; children           ;  constructor(name,fiel
                                                                 this.children = children 
                                                             }                                  
 }
+class Receiver      { trait; instance; type; fns        ;  constructor(trait,instance,type,fns)    { 
+                                                                this.trait = trait
+                                                                this.instance = instance
+                                                                this.type = type
+                                                                this.fns = fns    
+                                                            }                                  
+}
+
 class TypeDynamic   { fields; o                         ;  constructor(fields,o)       { this.fields = fields ; this.o = o }                   }
 class TypeTempl     { t; ts; o                          ;  constructor(t, ts ,o)       { this.t = t; this.ts = ts ; this.o = o }               }
 class EnumPat       { name; variant                     ;  constructor(name, variant)  { this.name = name ; this.variant = variant}            }
@@ -35,6 +43,7 @@ export {
     Fn,
     FnParam,
     TypeDef,
+    Receiver,
     StructLEl,
     Asgmt,
     When,

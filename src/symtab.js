@@ -2,7 +2,8 @@
 
 export class Symtab {
     /*tmp*/fns 
-    /*tmp*/structs    
+    /*tmp*/structs      
+    /*tmp*/receivers
 
     root
     stack
@@ -11,7 +12,8 @@ export class Symtab {
     constructor() {
         /*tmp*/this.fns = []    
         /*tmp*/this.structs = []
-
+        /*tmp*/this.receivers = {}
+        
         this.root =  new Table(null) 
         this.stack = [] 
         this.stack.push(this.root)
@@ -20,6 +22,7 @@ export class Symtab {
 
     /*tmp*/insert_fn(fn) { this.fns.push(fn)}
     /*tmp*/insert_struct(struct) { this.structs.push(struct) }
+    /*tmp*/insert_receiver(id, receiver) { this.receivers[id] = receiver}
 
     begin_scope() {
       const table =  new Table(this.current)
