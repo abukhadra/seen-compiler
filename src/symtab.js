@@ -22,13 +22,13 @@ export class Symtab {
 
     /*tmp*/insert_fn(fn) { this.fns.push(fn)}
     /*tmp*/insert_struct(struct) { this.structs.push(struct) }
-    /*tmp*/insert_receiver(id, instance, _fns) { 
-      const fns = _fns.map(fn => [fn,instance])
+    /*tmp*/insert_receiver(id, instance, fns) { 
+      const _fns = fns.map(fn => [fn,instance])
     
       if(!this.receivers[id]) { 
-        this.receivers[id] = fns
+        this.receivers[id] = _fns
       } else { 
-        this.receivers[id] = [...this.receivers[id] , ...fns]
+        this.receivers[id] = [...this.receivers[id] , ..._fns]
       } 
     }
 
