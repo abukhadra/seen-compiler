@@ -710,7 +710,7 @@ export default class Parser {
         const n = new Node("receiver", "def", receiver)
         this.symtab.insert_receiver(type.v[1], n) // FIXME: temp
         this.ast.push(n) 
-
+        return true
     }
 
     maybe_const() {
