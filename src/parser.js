@@ -1743,7 +1743,8 @@ export default class Parser {
 
     maybe_enum() {
         const maybe_inner_type = () => {
-            if(!this.is_open_paren()) { return }            
+            if(!this.is_open_paren()) { return }    
+            this.next()        
             let _t = this.maybe_type()
             this.req_close_paren()        
             return _t
