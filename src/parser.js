@@ -1486,8 +1486,7 @@ export default class Parser {
             const t = this.req_type()
             this.req_close_bracket()
             const _type = new Type(t, this.maybe_optional())
-            n = new Node("[", "t", _type)
-            return n
+            return new Node("[", "t", _type)
         }        
     }
 
