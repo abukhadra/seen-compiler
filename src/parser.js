@@ -65,7 +65,11 @@ export default class Parser {
             if(!parsed) {
                 this.maybe_attrs()
                 this.maybe_modifier()
-                parsed = this.maybe_global_fn() || this.maybe_typedef() ||  this.maybe_receiver()    
+                parsed = this.maybe_global_fn() 
+                            || this.maybe_struct() 
+                            || this.maybe_enum() 
+                            ||  this.maybe_receiver()    
+                            // || this.maybe_typedef()
             }
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
         }
@@ -155,6 +159,8 @@ export default class Parser {
     is_fn() { return this.is_keyword("fn") }
     is_alias() { return this.is_keyword("alias") }
     is_typedef() { return this.is_keyword("type") }
+    is_struct() { return this.is_keyword("struct") }
+    is_enum() { return this.is_keyword("enum") }
     is_open_paren() { return this.current.v === "(" }
     is_close_paren() { return this.current.v === ")" }
     is_open_curly() { return this.current.v === "{" }
@@ -1447,38 +1453,8 @@ export default class Parser {
         }
     }
 
-    maybe_type() {
-        let n
-        if(this.is_open_bracket()) {
-            this.next()
-            const t = this.req_type()
-            this.req_close_bracket()
-            const _type = new Type(t, this.maybe_optional())
-            n = new Node("[", "t", _type)
-        } else if(this.is_open_curly()) {
-            this.next()
-            const fields = []
-            this.maybe_comma()
-            while(true) {
-                if(this.is_eof() || this.is_close_curly()) { break }
-                if(fields.length > 0) {  this.req_comma()  }
-                const k = this.maybe_id()
-                let t
-                if(k) { 
-                    if(this.is_colon()) {
-                        this.next()
-                        t = this.req_type()
-                    }
-                }
-                const pair = new Pair(k, t)
-                fields.push(pair)
-            }
-            this.maybe_comma()
-            this.req_close_curly()
-            const _type = new TypeDynamic(fields, this.maybe_optional())
-            n = new Node("{", "t", _type) 
-
-        } else if(this.is_id()) {
+    maybe_simple_type() {
+        if(this.is_id()) {
             const t = this.req_id()
             if(this.is_open_angle()) {
                 const ts = []
@@ -1497,8 +1473,52 @@ export default class Parser {
                 const _type = new Type(t, this.maybe_optional())
                 n = new Node("t", "t", _type)
             }
+            return n                            
         }
-        return n        
+    }
+
+    maybe_list_type() {
+        if(this.is_open_bracket()) {
+            this.next()
+            const t = this.req_type()
+            this.req_close_bracket()
+            const _type = new Type(t, this.maybe_optional())
+            n = new Node("[", "t", _type)
+            return n
+        }        
+    }
+
+    // maybe_dynamic_type() { 
+    //     if(this.is_open_curly()) {
+    //         this.next()
+    //         const fields = []
+    //         this.maybe_comma()
+    //         while(true) {
+    //             if(this.is_eof() || this.is_close_curly()) { break }
+    //             if(fields.length > 0) {  this.req_comma()  }
+    //             const k = this.maybe_id()
+    //             let t
+    //             if(k) { 
+    //                 if(this.is_colon()) {
+    //                     this.next()
+    //                     t = this.req_type()
+    //                 }
+    //             }
+    //             const pair = new Pair(k, t)
+    //             fields.push(pair)
+    //         }
+    //         this.maybe_comma()
+    //         this.req_close_curly()
+    //         const _type = new TypeDynamic(fields, this.maybe_optional())
+    //         n = new Node("{", "t", _type) 
+    //         return n
+    //     } 
+    // }
+
+    maybe_type() {
+        return this.maybe_simple_type()
+                || this.maybe_list_type()
+                // || this.maybe_dynamic_type()
     }
 
     req_type() {
@@ -1603,6 +1623,10 @@ export default class Parser {
         return fields
     }
 
+
+
+
+
     maybe_typedef() {
         const maybe_fields = () => {
             const fields = []
@@ -1672,6 +1696,89 @@ export default class Parser {
         return true
     }
     
+
+    maybe_struct() {
+        function maybe_fields() {
+            const fields = []
+            if(!this.is_open_curly()) { return }
+            this.next()
+            while (!(this.is_eof() || this.is_close_curly())) {
+                let field_name 
+                if(this.is_id() && this.expect_colon()) { 
+                    field_name = this.current 
+                    this.next()
+                    this.next()
+                }
+                let field
+                if(field_name) {   field = new Node("field", "def", [field_name, this.req_type()]) } 
+                if(!field) { 
+                    const type = this.maybe_list_type() 
+                    if(type) { field = new Node('field', 'def', ['[]', type]) }                    
+                    if(field) { fields.push(field) }
+                    break 
+                }
+                fields.push(field) 
+                this.optional_comma()
+            }
+            
+            this.req_close_curly()        
+            return fields
+        }
+
+        if(!this.is_struct()) { return }
+        this.next()
+        const id = this.req_id()
+        this.symtab.insert_struct(id.v[1])
+        let fields  = maybe_fields() || []
+        if(!fields) { return }        
+        const _t = new Struct(id, fields)
+        const n = new Node("struct", "def", _t)
+        this.ast.push(n)
+
+        return true
+    }
+
+    maybe_enum() {
+        function maybe_variants() {
+            const variants = []
+            if(!this.is_open_curly()) { return }
+            this.next()
+            while (!(this.is_eof() || this.is_close_curly())) {
+                let variant_name 
+                if(this.is_id()) { 
+                    variant_name = this.current 
+                    this.next()
+                }
+                let variant
+                if(variant_name) { variant = new Node("variant", "def", [variant_name, maybe_inner_type()]) } 
+                if(!variant) { break  }
+                variants.push(variant) 
+                this.optional_comma()
+            }
+            
+            this.req_close_curly()        
+            return variants
+        }
+
+        function maybe_inner_type() {
+            if(!this.is_open_paren()) { return }            
+            let _t = this.maybe_type()
+            this.req_close_paren()        
+            return _t
+        }
+
+        if(!this.is_enum()) { return }
+        this.next()
+        const id = this.req_id()
+        this.symtab.insert_enum(id.v[1])
+        let variants  = maybe_variants() || []
+        if(!variants) { return }        
+        const _t = new Enum(id, variants)
+        const n = new Node("enum", "def", _t)
+        this.ast.push(n)
+        return true
+    }
+
     implicit_return(_stmts) {
         if(!_stmts || _stmts.length <= 0) { return }
         const last_index = _stmts.length - 1

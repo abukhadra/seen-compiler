@@ -12,6 +12,7 @@ export class Symtab {
     constructor() {
         /*tmp*/this.fns = []    
         /*tmp*/this.structs = []
+        /*tmp*/this.enums = []
         /*tmp*/this.receivers = {}
         
         this.root =  new Table(null) 
@@ -22,6 +23,7 @@ export class Symtab {
 
     /*tmp*/insert_fn(fn) { this.fns.push(fn)}
     /*tmp*/insert_struct(struct) { this.structs.push(struct) }
+    /*tmp*/insert_enum(_enum) { this.enums.push(_enum) }
     /*tmp*/insert_receiver(id, instance, fns) { 
       const _fns = fns.map(fn => [fn,instance])
     

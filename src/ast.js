@@ -7,6 +7,20 @@ class TypeDef       { name; fields ; children           ;  constructor(name,fiel
                                                                 this.children = children 
                                                             }                                  
 }
+
+class Struct       { name; fields ;                     ;  constructor(name,fields)    { 
+                                                            this.name = name 
+                                                            this.fields = fields
+                                                        }                                  
+}
+
+class Enum         { name; variants ;                   ;  constructor(name,variants)    { 
+                                                            this.name = name 
+                                                            this.variants = variants
+                                                        }                                  
+}
+
+
 class Receiver      { trait; instance; type; fns        ;  constructor(trait,instance,type,fns)    { 
                                                                 this.trait = trait
                                                                 this.instance = instance
@@ -43,6 +57,8 @@ export {
     Fn,
     FnParam,
     TypeDef,
+    Struct,
+    Enum,
     Receiver,
     StructLEl,
     Asgmt,
