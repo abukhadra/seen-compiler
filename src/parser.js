@@ -1455,6 +1455,7 @@ export default class Parser {
 
     maybe_simple_type() {
         if(this.is_id()) {
+            let n 
             const t = this.req_id()
             if(this.is_open_angle()) {
                 const ts = []
