@@ -1698,7 +1698,7 @@ export default class Parser {
     
 
     maybe_struct() {
-        function maybe_fields() {
+        const maybe_fields = () => {
             const fields = []
             if(!this.is_open_curly()) { return }
             this.next()
@@ -1739,7 +1739,14 @@ export default class Parser {
     }
 
     maybe_enum() {
-        function maybe_variants() {
+        const maybe_inner_type = () => {
+            if(!this.is_open_paren()) { return }            
+            let _t = this.maybe_type()
+            this.req_close_paren()        
+            return _t
+        }
+
+        const maybe_variants = () => {
             const variants = []
             if(!this.is_open_curly()) { return }
             this.next()
@@ -1758,13 +1765,6 @@ export default class Parser {
             
             this.req_close_curly()        
             return variants
-        }
-
-        function maybe_inner_type() {
-            if(!this.is_open_paren()) { return }            
-            let _t = this.maybe_type()
-            this.req_close_paren()        
-            return _t
         }
 
         if(!this.is_enum()) { return }
