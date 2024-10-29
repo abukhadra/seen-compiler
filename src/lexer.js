@@ -321,6 +321,14 @@ export default class Lexer {
         }
     }
 
+    concat() {
+        if('+' === this.lookahead()) {
+            this.next()
+            this.add_token("++")
+            return true
+        }
+    }
+
     add() {
         this.add_token("+")
         return true
@@ -544,7 +552,7 @@ export default class Lexer {
         return true
     }
 
-    deconstruct() {
+    trailing() {
         if(this.lookahead() === '>') {
             this.skip(1)
             this.add_token(":>")
@@ -795,7 +803,7 @@ export default class Lexer {
             case '\r': case '\t': case ' ': { if(!this.ignore_cmts_ws) {  this.add_token(c)  } } break
             case '&': this.and() ; break
             case '|': this.pipe() || this.or_listpipe()  || this.bar()  ; break
-            case '+': this.add_asgmt() || this.add() ; break
+            case '+': this.add_asgmt() || this.concat() || this.add() ; break
             case '-': this.comment() || this.sub_asgmt() || this.thin_arrow() || this.dash() ; break
             case '~': this.tilde() ; break
             case '^': this.add_token("^") ; break
@@ -803,7 +811,7 @@ export default class Lexer {
             case '!': this.ne() || this.exclamation() ; break
             case '>': this.ge() || this.gt() ; break
             case '<': this.le() || this.lt() ; break
-            case ':': this.deconstruct() || this.decl() || this.dcolon() || this.colon() ; break
+            case ':': this.trailing() || this.decl() || this.dcolon() || this.colon() ; break
             case '`': this.transl() ; break         
             case '@': this.add_token('@') ; break       
             case '$': this.add_token("$") ; break

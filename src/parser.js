@@ -31,10 +31,10 @@ import {
     panic,    
 } from '../lib/sutils.js'
 
-const BIN_OP            = ["+", "-", "*", "/" , "[", "~=", "::", ":=", "=", "+=", "-=", "*=", "/=", "|=", "&=", "==", "!=", ">", ">=", "<", "<=", "|", "||", "|>", "||>", ":>", "&", "&&", ".", ".."] 
+const BIN_OP            = ["+", "-", "*", "/" , "[", "~=", , "++" , "::", ":=", "=", "+=", "-=", "*=", "/=", "|=", "&=", "==", "!=", ">", ">=", "<", "<=", "|", "||", "|>", "||>", ":>", "&", "&&", ".", ".."] 
 const PREFIX_UNI_OP     = [".", "!", "not", "-", "+"] 
 const POSTFIX_UNI_OP    = ["?", "!", "%"] 
-const BIN_R_ASSOC       = ["=", ":" , "::" , ":=", "~=", "+=", "-=", "*=", "/=", "÷=", "&=" , "&&=" , "|=", "||="] 
+const BIN_R_ASSOC       = ["=", ":" , ":=", "~=", "+=", "-=", "*=", "/=", "÷=", "&=" , "&&=" , "|=", "||="] 
 
 export default class Parser {
     tokens
@@ -131,6 +131,8 @@ export default class Parser {
     is_behind_nl() { return this.lookbehind === '\n' }
     is_dot() { return this.current.v === "." }
     is_colon() { return this.current.v === ":" }
+    is_dplus() { return this.current.v === "++" }
+    is_trailing() { return this.current.v === ":>" }
     is_dcolon() { return this.current.v === "::" }
     is_caret() { return this.current.v === "^" }
     is_semicolon() { return this.current.v === ";" }
@@ -979,9 +981,9 @@ export default class Parser {
             case "["    :                                           return 20
             case "("    : case "{":                                 return 19
             case "."    :                                           return 18
-            case "*"    : case "×"  : case "/": case "÷":           return 13
-            case "+"    : case "-"  :                               return 12
-            case "<"    : case "<=" : case ">": case ">=":          return 11
+            case "*"    : case "×"  : case "/"  : case "÷"  :       return 13
+            case "+"    : case "-"  : case "::" : case "++" :       return 12
+            case "<"    : case "<=" : case ">"  : case ">=" :       return 11
             case "=="   : case "!=" :                               return 10
             case "<<"   : case ">>" :                               return 8 
             case "&"    :                                           return 7
@@ -990,7 +992,7 @@ export default class Parser {
             case "&&"   :                                           return 4
             case "||"   :                                           return 3
             case "|>"   : case "||>": case ":>" :                   return 2
-            case "="    : case ":=" : case "::"
+            case "="    : case ":=" : 
                         : case "~=" : case "+=" : case "-="
                         : case "*=" : case "×=" : case "/="
                         : case "÷=" : case "&=" : case "|="
