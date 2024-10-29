@@ -1629,7 +1629,7 @@ export default class Parser {
 
 
 
-    maybe_typedef() {
+    /* maybe_typedef() {
         const maybe_fields = () => {
             const fields = []
             if(!this.is_open_paren()) { return }
@@ -1697,7 +1697,7 @@ export default class Parser {
 
         return true
     }
-    
+     */
 
     maybe_struct() {
         const maybe_fields = () => {
