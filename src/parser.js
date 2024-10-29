@@ -1684,7 +1684,7 @@ export default class Parser {
         const children = maybe_children()
         if(!(fields || children)) { return }        
         if(children) {
-            const id = {v:['id','children'], loc:{"line":0,"column":0}}
+            const id = {v:['id','sn__'], loc:{"line":0,"column":0}}
             const t = {"id":"[","t":"t","v":{"t":{"id":"t","t":"t","v":{"t":{"v":["id","any"],"loc":{"line":0,"column":0}}}}}}
             const field = new Node("field", "expr", [id, t])
             fields.push(field)
@@ -1715,7 +1715,7 @@ export default class Parser {
                 if(field_name) {   field = new Node("field", "def", [field_name, this.req_type()]) } 
                 if(!field) { 
                     const type = this.maybe_list_type() 
-                    if(type) { field = new Node('field', 'def', ['[]', type]) }                    
+                    if(type) { field = new Node('field', 'def', ['sn__', type]) }                    
                     if(field) { fields.push(field) }
                     break 
                 }
