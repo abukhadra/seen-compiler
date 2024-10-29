@@ -992,11 +992,11 @@ export default class Parser {
             case "&&"   :                                           return 4
             case "||"   :                                           return 3
             case "|>"   : case "||>": case ":>" :                   return 2
-            case "="    : case ":=" : 
-                        : case "~=" : case "+=" : case "-="
+            case "="    : case "~=" : case "+=" : case "-="
                         : case "*=" : case "×=" : case "/="
                         : case "÷=" : case "&=" : case "|="
-                        : case "^=" : case ">>=": case "<<=" :      return 1
+                        : case "^=" : case ">>=": case "<<=" 
+                        : case ":=" :                               return 1
             default: panic("unexpected binary operator: " + to_str(v))
         }
     }
