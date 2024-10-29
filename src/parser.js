@@ -1625,10 +1625,6 @@ export default class Parser {
         return fields
     }
 
-
-
-
-
     /* maybe_typedef() {
         const maybe_fields = () => {
             const fields = []
@@ -1715,7 +1711,10 @@ export default class Parser {
                 if(field_name) {   field = new Node("field", "def", [field_name, this.req_type()]) } 
                 if(!field) { 
                     const type = this.maybe_list_type() 
-                    if(type) { field = new Node('field', 'def', ['sn__', type]) }                    
+                    if(type) { 
+                        const id = {v:['id','sn__'], loc:{"line":0,"column":0}}
+                        field = new Node('field', 'def', [id, type]) 
+                    }
                     if(field) { fields.push(field) }
                     break 
                 }
