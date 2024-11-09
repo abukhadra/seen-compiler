@@ -701,11 +701,7 @@ export default class Parser {
         if(!this.is_at()) { return }
         this.next()
         let trait = this.maybe_id()
-        this.req_open_paren() 
-        let instance = this.req_id() 
-        this.req_colon() 
-        let type = this.req_id() 
-        this.req_close_paren()
+        let instance = this.req_type() 
         let fns = []
         if(this.maybe_open_curly() ){
             while(!this.is_eof() || !this.is_close_curly()) { 
