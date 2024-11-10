@@ -5,18 +5,27 @@ import {
     Pair,
     Uni,
     Bin,
+    Method,
+    Trait,
+    TraitImpl,
     Fn,
+    FnSig,
     FnParam,
-    TypeDef,
+    TrailingClosure,
+    FnCall,
+    Field,
+    FieldAsgmt,
+    AnonymousMethod,
     Struct,
     Enum,
-    Receiver,
     StructLEl,
     Asgmt,
+    ForInf,
+    ForCond,
+    ForIn,
     When,
     WhenArm,
     Type,
-    TypeDynamic,
     TypeTempl,
     EnumPat,
     Node
@@ -31,8 +40,8 @@ import {
     panic,    
 } from '../lib/sutils.js'
 
-const BIN_OP            = ["+", "-", "*", "/" , "[", "~=", , "++" , "::", ":=", "=", "+=", "-=", "*=", "/=", "|=", "&=", "==", "!=", ">", ">=", "<", "<=", "|", "||", "|>", "||>", ":>", "&", "&&", ".", ".."] 
-const PREFIX_UNI_OP     = [".", "!", "not", "-", "+"] 
+const BIN_OP            = ["+", "-", "*", "/" , "[", "~=", "=>", "++" , "::", ":=", "=", "+=", "-=", "*=", "/=", "|=", "&=", "==", "!=", ">", ">=", "<", "<=", "|", "||", "|>", "||>", ":>", "&", "&&", ".", ".."] 
+const PREFIX_UNI_OP     = [ "..." , ".", "!", "not", "-", "+"] 
 const POSTFIX_UNI_OP    = ["?", "!", "%"] 
 const BIN_R_ASSOC       = ["=", ":" , ":=", "~=", "+=", "-=", "*=", "/=", "÷=", "&=" , "&&=" , "|=", "||="] 
 
@@ -70,7 +79,9 @@ export default class Parser {
                 parsed = this.maybe_global_fn() 
                             || this.maybe_struct() 
                             || this.maybe_enum() 
-                            ||  this.maybe_receiver()    
+                            || this.maybe_trait()                            
+                            || this.maybe_impl()    
+
                             // || this.maybe_typedef()
             }
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
@@ -130,6 +141,8 @@ export default class Parser {
     is_behind_none() { return is_none(this.lookbehind) }
     is_behind_nl() { return this.lookbehind === '\n' }
     is_dot() { return this.current.v === "." }
+    is_double_dot() { return this.current.v === ".." }
+    is_tripple_dot() { return this.current.v === "..." }
     is_colon() { return this.current.v === ":" }
     is_dplus() { return this.current.v === "++" }
     is_trailing() { return this.current.v === ":>" }
@@ -165,6 +178,7 @@ export default class Parser {
     is_typedef() { return this.is_keyword("type") }
     is_struct() { return this.is_keyword("struct") }
     is_enum() { return this.is_keyword("enum") }
+    is_trait() { return this.is_keyword("trait") }
     is_open_paren() { return this.current.v === "(" }
     is_close_paren() { return this.current.v === ")" }
     is_open_curly() { return this.current.v === "{" }
@@ -215,7 +229,6 @@ export default class Parser {
         if(!is_list(this.current.v)) { return }
         return this.is_fn() && this.lookahead().v !== "^"
     }
-    expect_short_asgmt() { return this.lookahead().v === ":=" }
     expect_colon() { return this.lookahead().v === ":" }
     expect_comma() { return this.lookahead().v === "," }
     expect_plus() { return this.lookahead().v === "+" }
@@ -626,7 +639,9 @@ export default class Parser {
     }
 
     req_body() {
+        this.req_open_curly()                
         const stmts = this.stmts()
+        this.req_close_curly()
         const n = new Node("body", "body", stmts)
         return n
     }
@@ -639,7 +654,12 @@ export default class Parser {
 
     maybe_stmt() {
         if(this.is_eof() || this.is_modifier()) { return } 
-        return   this.maybe_break() || this.maybe_const() || this.maybe_let() || this.maybe_expr() || this.maybe_semicolon()        
+        return   this.maybe_break() 
+                    || this.maybe_const() 
+                    || this.maybe_let() 
+                    || this.maybe_expr() 
+                    || this.maybe_semicolon()        
+                    || this.maybe_for()
     }
 
     req_stmts() {
@@ -697,28 +717,65 @@ export default class Parser {
          return false
     }    
 
-    maybe_receiver() {
+    maybe_trait() { 
+        if(!this.is_trait()) { return }
+        this.next()
+        let id = this.req_id()
+        let sigs = []
+        let fns = []
+        while(!this.is_eof() || !this.is_close_curly()) { 
+            // const fn = this.maybe_fn()
+            const fn_or_sig = this.maybe_fn_or_sig()
+            if(fn_or_sig.id === 'fn_sig') { sig.push(fn_or_sig)}
+            else if(fn_or_sig.id === 'fn') { fns.push(fn_or_sig)}
+            else { panic('expecting function or signature.')}
+        }
+        this.req_close_curly()
+        const trait = new Trait(id, fns, sigs )
+        const n = new Node("trait", "def", trait)
+        this.ast.push(n)
+    }
+
+    maybe_impl() {
         if(!this.is_at()) { return }
         this.next()
-        let trait = this.maybe_id()
-        let instance = this.req_type() 
-        let fns = []
-        if(this.maybe_open_curly() ){
+        let t = this.req_type() 
+        return this.is_id() ? this.req_trait_impl(t) : this.req_methods(t)
+    }
+
+    req_methods(t) {
+        if( this.maybe_open_curly() ){
             while(!this.is_eof() || !this.is_close_curly()) { 
-                let fn = this.maybe_fn()
-                if(fn) { fns.push(fn)} else { break }
+                const fn = this.maybe_fn()
+                const method = new Method(t, fn)
+                const n = new Node("method", "def", method)
+                this.ast.push(n)
             }
             this.req_close_curly()
         } else { 
-            fns.push(this.req_fn()) 
+            const method = new Method( t , this.req_fn() )
+            this.ast.push( new Node( "method" , "def", method) )
         }
-
-        const receiver = new Receiver(trait, instance, type, fns)
-        const n = new Node("receiver", "def", receiver)
-        this.symtab.insert_receiver(type.v[1], instance.v[1], fns) // FIXME: temp
-        this.ast.push(n) 
         return true
     }
+
+    req_trait_impl(t) {        
+        if( this.maybe_open_curly() ){
+            let methods = []
+            while(!this.is_eof() || !this.is_close_curly()) { 
+                const fn = this.maybe_fn()
+                const method = new Method(type, fn)
+                methods.push( method )
+            }
+            const n = new Node("method", "def", methods)
+            this.ast.push(n)
+            this.req_close_curly()
+        } else { 
+            const method = new Method( t , this.req_fn())
+            this.ast.push( new Node( "trait_impl" , "def", method) )
+        }
+        return true
+    }    
 
     maybe_const() {
         if(!this.is_const()) { return }
@@ -737,8 +794,9 @@ export default class Parser {
         this.next()
         const _pat = this.req_pat()
         const t = this.maybe_tannotation()
-        this.req_asgmt()
-        const rhs = this.req_expr()
+        let eq = this.maybe_asgmt()
+        let rhs
+        if(eq) { rhs = this.req_expr() }
         const asgmt = new Asgmt(_pat, t, rhs)
         const n = new Node("var", "stmt", asgmt)
         return n
@@ -952,7 +1010,10 @@ export default class Parser {
         } else if(this.is_open_paren()) {
             this.next()
             ropr = this.req_call_args()
-        } else {
+        } else if(this.is_thick_arrow()) { 
+            this.next()
+            ropr = this.req_anonymous_method()
+        }else {
             this.next()
             ropr = this.maybe_expr()
         }
@@ -963,6 +1024,7 @@ export default class Parser {
 
     prec_uni(v) {
         switch(v.v) {
+            case "...":                                         return 70
             case "%":                                           return 60 
             case ".":                                           return 50 
             case "!": case "?":                                 return 16
@@ -987,7 +1049,7 @@ export default class Parser {
             case "|"    :                                           return 5
             case "&&"   :                                           return 4
             case "||"   :                                           return 3
-            case "|>"   : case "||>": case ":>" :                   return 2
+            case "|>"   : case "||>": case ":>" : case "=>" :       return 2
             case "="    : case "~=" : case "+=" : case "-="
                         : case "*=" : case "×=" : case "/="
                         : case "÷=" : case "&=" : case "|="
@@ -1062,49 +1124,43 @@ export default class Parser {
             return n
         }
     }
-    // maybe_unit() {
-    //     if(this.is_open_paren() && this.expect_close_paren()) {
-    //         this.next()
-    //         this.next()
-    //         const n = new Node("()", "expr", "()")
-    //         return n
-    //     }
-    // }
 
-    // FIXME: a workaround that only handles using id params
-    maybe_afn(els) {
-        const to_params = () => {
-            if(!els) { return }
-            if(!is_list(els)) { els = [els]}
-            const params = []
-            els.forEach(el => { 
-                el.id = 'id' 
-                el.type = 'pat'
-                
-                params.push(new Node("param", "pat", new FnParam(el)))
-            }); 
-            return params
-        }
+    req_anonymous_fn() {
+        const fn = this.maybe_anonymous_fn()
+        if(fn) { return fn } else { panic("expecting an anonymous function : " + to_str(this.current)) }        
+    }
+    maybe_anonymous_fn() { 
+        if(!this.is_tilde()) { return }
+        this.next()
+        const params = []
 
-        if(this.is_thick_arrow()) {
-            const params = to_params()
-            this.next()
-            this.req_open_curly()
-            const body = this.req_body_ret()
-            this.req_close_curly()
-            const _afn = new Fn("", params, null, body)
-            const n = new Node("afn", "expr", _afn)
-            return n
+        let open_paren = this.maybe_open_paren()
+        this.maybe_comma()
+        while(true) {
+            if(this.is_close_paren() || this.is_eof()) { break }
+            if(params.length > 0) { this.req_comma() }
+            const _pat = this.req_pat()
+            const t = this.maybe_tannotation()
+            const param = new FnParam(_pat, t)
+            const n = new Node("param", "pat", param)
+            if(_pat.id !== "id") {  panic("only parameters with id patterns are currently supported")  }
+            params.push(n)
         }
+        this.maybe_comma()
+        if(open_paren) { this.req_close_paren() }
+        const ret_types = this.maybe_fn_ret_types()
+        const body = this.req_body_ret()
+        const _afn = new Fn("", params, ret_types, body)
+        const n = new Node("afn", "expr", _afn)
+        return n        
     }
 
-    maybe_tuple_afn_group() {
+    maybe_tuple_group() {
         if(this.is_open_paren()) {
             const loc = this.current.loc
             this.next()
             if(this.is_id() && this.expect_colon()) {
                 return this.req_named_tuple()
-                const afn = this.maybe_afn(tuple)
             } else {                
                 let expr = null;
                 expr = this.maybe_expr()            
@@ -1121,18 +1177,12 @@ export default class Parser {
                         }
                         this.maybe_comma()
                         this.req_close_paren()
-                        const afn = this.maybe_afn(tuple)
-                        if(afn) { return afn } else {  
-                            const n = new Node("tuple", "expr", tuple)
-                            return n
-                        }
+                        const n = new Node("tuple", "expr", tuple)
+                        return n
                     } else {
                         this.req_close_paren()
-                        const afn = this.maybe_afn(expr)
-                        if(afn) { return afn } else {  
-                            expr.grouped = true
-                            return expr
-                        }
+                        expr.grouped = true
+                        return expr
                     }
                 }
             }
@@ -1284,7 +1334,7 @@ export default class Parser {
     maybe_call(id) {
         const maybe_args = () => {
             const args = []
-            if(!this.is_open_paren()) { return }
+            if(!this.is_open_paren() ) { return }
             this.next()
             while (!(this.is_eof() || this.is_close_paren())) {
                 let arg_name 
@@ -1307,30 +1357,16 @@ export default class Parser {
             return args
         }
     
-        const  maybe_children = () => {
-            if(!this.is_dcolon()) { return }
-            this.next()
-            const children = []
-            if(this.is_open_curly()) { 
-                this.next()
-                while (!(this.is_eof() || this.is_close_curly())) {
-                    const expr = this.maybe_expr()  // FIXME: for typedef: this should be types not exprs
-                    if(!expr) { break }
-                    children.push(expr) 
-                    this.optional_comma()
-                }        
-                this.req_close_curly()
-                return children
-            } else {
-                children.push(this.req_expr())
-                return children
-            }
-        }
-
         const args  = maybe_args()
-        const children = maybe_children()
-        if(!(args || children)) { return }
-        const n = new Node("call", "expr", [id, args, children])
+        if(!args  && ( !this.is_tilde() || !this.is_colon() ) ) { return }
+        if(!args) { args = [] }
+        let trailing = []
+        while(true) { 
+            let closure = this.maybe_trailing_closure()
+            if(closure) { trailing.push(closure) } else { break }
+        }
+        const fn_call = new FnCall(id, args, trailing)
+        const n = new Node("call", "expr", fn_call)
         const t = "call"
         return n
     }
@@ -1379,7 +1415,6 @@ export default class Parser {
                 break
             }
             if(arms.length > 0) {
-                // this.req_comma()
                 this.optional_comma()
                 if(this.is_eof() || this.is_close_curly()) { break }
             }
@@ -1393,10 +1428,83 @@ export default class Parser {
         return n
     }
 
+    maybe_for() { 
+        if(!this.is_for()) { return }
+        this.next()
+        let stmt =  this.maybe_for_inf()  
+        if(!stmt) { stmt = this.maybe_for_cond() }
+        if(!stmt) { stmt = this.req_for_in()  }
+        return stmt
+    }
+
+    maybe_for_inf() { 
+        if(!this.is_open_curly()) { return }
+        let body = this.req_body()
+        let stmt = new ForInf(body)
+        let n = new Node('for_inf', 'stmt', stmt)
+        return n
+     }
+    
+    maybe_for_cond() { 
+        const init = this.maybe_let()
+        let expr
+        if(init) { expr = this.req_expr() } else { expr = this.maybe_expr() }
+        if(!expr) { return }
+
+        const body = this.req_body() 
+        let stmt = new ForCond(expr, body)
+        let n = new Node('for_cond', 'stmt', stmt)
+        return n
+    }
+
+    req_for_in() { 
+        const pat = this.req_pat() 
+        this.req_in()
+        const expr = this.req_expr() 
+        let body = this.req_body()
+        let stmt = new ForIn(pat, expr, body) 
+        let n = new Node('for_in', 'stmt', stmt)
+        return n
+     }
+
+
+    req_anonymous_method() {
+        const maybe_field_asgmt = () => {
+            if( !this.is_id() || this.lookahead().v !== ':' ) { return }
+            let id = this.req_id();
+            this.req_colon();
+            let expr = this.req_expr()
+            const bin = new FieldAsgmt(id, expr)
+            return bin 
+        }
+
+        if( this.is_open_curly() )  { this.next() } else { panic("expecting ',' after : " + to_str(this.current)) }    
+        let stmts = []
+        while (!this.is_eof() || !this.is_close_curly() ) {
+            let stmt = maybe_field_asgmt() || this.maybe_stmt()
+            if(stmt) { stmts.push(stmt)} else { panic('expected a statement : ' + to_str(this.current))}
+        }
+        let amethod = new AnonymousMethod(stmts)
+        this.req_close_curly()
+        let n = new Node('amethod', 'expr', amethod)
+        return n
+    }
+
+    maybe_trailing_closure() {  
+        if(!this.is_colon() || !this.is_tilde()) { return }
+        let name 
+        if(this.is_colon()) {
+            this.next()
+            name = this.req_id()
+        }
+        let fn = this.req_anonymous_fn()
+        return new TrailingClosure(name, fn)
+    }
+
+
     maybe_prim() {
-        // let expr = this.maybe_unit()
         let expr = this.maybe_void()
-        if(!expr) { expr = this.maybe_tuple_afn_group() }
+        if(!expr) { expr = this.maybe_tuple_group() }
         if(!expr) { expr = this.maybe_prefix_uni_op() }
         if(!expr) { expr = this.maybe_call_or_ref() }
         if(!expr) { expr = this.maybe_literal() }
@@ -1416,7 +1524,6 @@ export default class Parser {
     maybe_fn() {
         const tk = this.current
         if(!this.is_fn()) { return }
-        this.next()
         const _fn = this.req_fn()
         if(_fn && contains(["main", "بدء"], _fn.v.name.v[1])) {
             const n = new Node("main", "fn", _fn.v)
@@ -1486,33 +1593,6 @@ export default class Parser {
             return new Node("[", "t", _type)
         }        
     }
-
-    // maybe_dynamic_type() { 
-    //     if(this.is_open_curly()) {
-    //         this.next()
-    //         const fields = []
-    //         this.maybe_comma()
-    //         while(true) {
-    //             if(this.is_eof() || this.is_close_curly()) { break }
-    //             if(fields.length > 0) {  this.req_comma()  }
-    //             const k = this.maybe_id()
-    //             let t
-    //             if(k) { 
-    //                 if(this.is_colon()) {
-    //                     this.next()
-    //                     t = this.req_type()
-    //                 }
-    //             }
-    //             const pair = new Pair(k, t)
-    //             fields.push(pair)
-    //         }
-    //         this.maybe_comma()
-    //         this.req_close_curly()
-    //         const _type = new TypeDynamic(fields, this.maybe_optional())
-    //         n = new Node("{", "t", _type) 
-    //         return n
-    //     } 
-    // }
 
     maybe_type() {
         return this.maybe_simple_type()
@@ -1588,24 +1668,38 @@ export default class Parser {
     }
 
     req_fn() {
+        let sig = this.maybe_fn_sig()
+        if(sig) { sig =  sig.v } else { return }
+        const body = this.req_body_ret()
+        const _fn = new Fn( sig.name, sig.params , sig.ret_types, body)
+        const n = new Node("fn", "def", _fn)
+        return n
+    }
+
+    maybe_fn_sig() { 
+        if(!this.is_fn()) { return }
+        this.next()
         const name = this.req_id()
         this.symtab.insert_fn(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
         const params = this.maybe_fn_params()
         const ret_types = this.maybe_fn_ret_types()
-        if(this.is_open_curly()) {
-            this.next()
-            const body = this.req_body_ret()
-            const _fn = new Fn(name, params , ret_types, body)
-            const n = new Node("fn", "fn", _fn)
-            this.req_close_curly();
-            return n
-        } else {
-            this.req_asgmt()
-            const body = this.req_body_ret()
-            const _fn = new Fn(name, params , ret_types, body)
-            const n = new Node("fn", "fn", _fn)
-            return n            
-        }        
+        const fn_sig = new FnSig(name, params, ret_types)
+        const n = new Node("fn_sig", "def", fn_sig)
+        return n
+    }
+
+    maybe_fn_or_sig() {
+        let sig = this.maybe_fn_sig()
+        if(sig) {
+            if(this.is_open_curly() ) {
+                const body = this.req_body_ret()
+                const _fn = new Fn( sig.name, sig.params , sig.ret_types, body)
+                const n = new Node("fn", "def", _fn)
+                return n
+            } else {
+                return sig
+            }
+        }
     }
 
     maybe_fields() {
@@ -1622,76 +1716,6 @@ export default class Parser {
         return fields
     }
 
-    /* maybe_typedef() {
-        const maybe_fields = () => {
-            const fields = []
-            if(!this.is_open_paren()) { return }
-            this.next()
-            while (!(this.is_eof() || this.is_close_paren())) {
-                let field_name 
-                if(this.is_id() && this.expect_colon()) { 
-                    field_name = this.current 
-                    this.next()
-                    this.next()
-                }
-                let field
-                if(field_name) {  
-                    field = new Node("field", "expr", [field_name, this.req_type()])
-                } else { 
-                    field = this.maybe_expr() 
-                }
-                if(!field) { break }
-                fields.push(field) 
-                this.optional_comma()
-            }
-            this.req_close_paren()        
-            return fields
-        }
-    
-        const  maybe_children = () => {
-            if(!this.is_dcolon()) { return }
-            this.next()
-            if(this.is_open_curly()) { 
-                this.next()
-                const children = []
-                while (!(this.is_eof() || this.is_close_curly())) {
-                    const expr = this.maybe_expr()  // FIXME: for typedef: this should be types not exprs
-                    if(!expr) { break }
-                    children.push(expr) 
-                    this.optional_comma()
-                }        
-                this.req_close_curly()
-                children.push()
-                return children
-            } else {
-                children.push(this.req_expr())
-                return children
-            }
-        }
-
-        if(!this.is_typedef()) { return }
-        this.next()
-        const id = this.req_id()
-        this.symtab.insert_struct(id.v[1])
-        let fields  = maybe_fields() || []
-        const children = maybe_children()
-        if(!(fields || children)) { return }        
-        if(children) {
-            const id = {v:['id','sn__'], loc:{"line":0,"column":0}}
-            const t = {"id":"[","t":"t","v":{"t":{"id":"t","t":"t","v":{"t":{"v":["id","any"],"loc":{"line":0,"column":0}}}}}}
-            const field = new Node("field", "expr", [id, t])
-            fields.push(field)
-        }
-        // pprint('typedef: ')
-        // pprint(fields)
-        const _t = new TypeDef(id, fields, children)
-        const n = new Node("type", "def", _t)
-        this.ast.push(n)
-
-        return true
-    }
-     */
-
     maybe_struct() {
         const maybe_fields = () => {
             const fields = []
@@ -1703,19 +1727,26 @@ export default class Parser {
                     field_name = this.current 
                     this.next()
                     this.next()
-                }
-                let field
-                if(field_name) {   field = new Node("field", "def", [field_name, this.req_type()]) } 
-                if(!field) { 
+                } else if(this.is_open_paren()) {
+                    this.next() 
+                    field_name = this.req_id()
+                    this.req_colon()
+                    this.req_close_curly() 
+                }   
+                let n
+                let field = new Field(field_name, this.req_type())
+                if(field_name) { n = new Node("field", "def", field) } 
+                if(!n) { 
                     const type = this.maybe_list_type() 
-                    if(type) { 
+                    if(type) {                         
                         const id = {v:['id','sn__'], loc:{"line":0,"column":0}}
-                        field = new Node('field', 'def', [id, type]) 
+                        let field = new Field(id, type)
+                        n = new Node('field', 'def', field) 
                     }
-                    if(field) { fields.push(field) }
+                    if(n) { fields.push(n) }
                     break 
                 }
-                fields.push(field) 
+                fields.push(n) 
                 this.optional_comma()
             }
             

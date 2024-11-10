@@ -539,13 +539,18 @@ export default class Lexer {
         }
     }
 
-    ddot() {
+    dots() {
         if('.' === this.lookahead()) {
             this.skip(1)
-            this.add_token("..")
+            if('.' === this.lookahead()) { 
+                this.skip(1)
+                this.add_token("...")
+            } else {
+                this.add_token("..")
+            }
             return true
         }
-    }
+    }   
 
     dot() {
         this.add_token(".")
@@ -741,7 +746,7 @@ export default class Lexer {
                 case '؟': this.add_token("?") ; break
                 case '٪': this.add_token('%'); break
                 case ',': this.mashriq_float() ; break
-                case '.': this.maghrib_float() || this.ddot() || this.dot() ; break
+                case '.': this.maghrib_float() || this.tdot() || this.dots() || this.dot() ; break
                 case '،': this.add_token(",") ; break
                 case '×': this.mul_asgmt() || this.mul() ; break
                 case '*': this.mul_asgmt() || this.asterisk() ; break

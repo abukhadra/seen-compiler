@@ -7,7 +7,7 @@ export const SUPPORTED_GEN = [
 ]
 
 export const AR_KEYWORD = {
-    "???" : "as",
+    "باسم" : "as",
     "صحيح": "true",
     "غير_صحيح": "false",
     "عندما": "when",
@@ -27,7 +27,7 @@ export const AR_KEYWORD = {
 }
 
 export const EN_KEYWORD = { 
-    "as" : "???",
+    "as" : "باسم",
     "true" : "صحيح",
     "false" : "غير_صحيح",
     "when" : "عندما",
