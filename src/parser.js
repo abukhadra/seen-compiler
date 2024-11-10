@@ -902,26 +902,26 @@ export default class Parser {
         return n
     }
 
-    req_call_args() {
-        const args = []
-        while(true) {
-            if(this.is_eof() || this.is_close_paren()) { break }
-            if(args.length > 0) {
-                if(this.is_newline()) {
-                    this.maybe_comma()    
-                } else {
-                    this.req_comma()
-                }
-            }
-            let expr = this.maybe_expr()
-            if(expr) {
-                args.push(expr)
-            }
-        }
-        this.req_close_paren()
-        const n = new Node("args", "expr", args)  
-        return n
-    }
+    // req_call_args() {
+    //     const args = []
+    //     while(true) {
+    //         if(this.is_eof() || this.is_close_paren()) { break }
+    //         if(args.length > 0) {
+    //             if(this.is_newline()) {
+    //                 this.maybe_comma()    
+    //             } else {
+    //                 this.req_comma()
+    //             }
+    //         }
+    //         let expr = this.maybe_expr()
+    //         if(expr) {
+    //             args.push(expr)
+    //         }
+    //     }
+    //     this.req_close_paren()
+    //     const n = new Node("args", "expr", args)  
+    //     return n
+    // }
 
     maybe_lopr_prefix_postfix(expr, postfix_op) {
         const opr = expr.v.opr
@@ -1006,9 +1006,9 @@ export default class Parser {
         } else if(this.is_dot()) {
             this.next()
             ropr = this.req_access(lopr)
-        } else if(this.is_open_paren()) {
-            this.next()
-            ropr = this.req_call_args()
+        // } else if(this.is_open_paren()) {
+        //     this.next()
+        //     ropr = this.req_call_args()
         } else if(this.is_thick_arrow()) { 
             this.next()
             ropr = this.req_anonymous_method()
@@ -1085,7 +1085,7 @@ export default class Parser {
 
     req_op(lopr) {
         const op = this.maybe_op(lopr)
-        if(op) {  return op }
+        if(op) { return op }
         panic("expect an operation: " + to_str(this.lookahead()))
     }
     
@@ -1366,7 +1366,6 @@ export default class Parser {
         }
         const fn_call = new FnCall(id, args, trailing)
         const n = new Node("call", "expr", fn_call)
-        const t = "call"
         return n
     }
 
@@ -1375,7 +1374,6 @@ export default class Parser {
         this.next()
 
         const n = new Node("ref", "expr", id)
-        const t = "ref"
         return n
     }
     
