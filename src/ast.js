@@ -36,15 +36,15 @@ class Fn            { name; params; ret_types; body     ;  constructor(name,para
                                                                 this.body = body
                                                             }  
 }
-class FnSig         { name; params; ret_types           ;  cosntructor(name, params, ret_types) { 
+class FnSig         { name; params; ret_types           ;  constructor(name, params, ret_types) { 
                                                                 this.name = name; 
                                                                 this.params = params; 
                                                                 this.ret_types = ret_types
                                                           }
 }
-class FnParam       { _pat; t                           ;   constructor(_pat,t)         { this._pat = _pat; this.t = t }                        }
-class TrailingClosure{ name; fn                         ;   constructor(name,fn)        { this.name = name; this.fn = fn }                      }
-class FnCall        { id; args; trailing                ;   constructor(id, args, trailing)    { 
+class FnParam        { _pat; t                          ;   constructor(_pat,t)         { this._pat = _pat; this.t = t }                        }
+class TrailingClosure{ label; fn                        ;   constructor(label,fn)        { this.label = label; this.fn = fn }                      }
+class FnCall         { id; args; trailing               ;   constructor(id, args, trailing)     { 
                                                                 this.id = id; 
                                                                 this.args = args; 
                                                                 this.trailing = trailing 

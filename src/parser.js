@@ -145,7 +145,6 @@ export default class Parser {
     is_tripple_dot() { return this.current.v === "..." }
     is_colon() { return this.current.v === ":" }
     is_dplus() { return this.current.v === "++" }
-    is_trailing() { return this.current.v === ":>" }
     is_dcolon() { return this.current.v === "::" }
     is_caret() { return this.current.v === "^" }
     is_semicolon() { return this.current.v === ";" }
@@ -1492,13 +1491,13 @@ export default class Parser {
 
     maybe_trailing_closure() {  
         if(!this.is_colon() || !this.is_tilde()) { return }
-        let name 
+        let label 
         if(this.is_colon()) {
             this.next()
-            name = this.req_id()
+            label = this.req_id()
         }
         let fn = this.req_anonymous_fn()
-        return new TrailingClosure(name, fn)
+        return new TrailingClosure(label, fn)
     }
 
 
@@ -1522,7 +1521,6 @@ export default class Parser {
     }
 
     maybe_fn() {
-        const tk = this.current
         if(!this.is_fn()) { return }
         const _fn = this.req_fn()
         if(_fn && contains(["main", "بدء"], _fn.v.name.v[1])) {
@@ -1702,20 +1700,6 @@ export default class Parser {
         }
     }
 
-    maybe_fields() {
-        const fields = []
-        while(this.is_id()) {
-            const key = new Node("id", "expr", this.req_id())
-            const v = this.req_tannotation()
-            const pair = new Pair(key, v)
-            const field = new Node("field", "", pair)
-            fields.push(field)
-            if(this.is_close_paren()) { break; }
-            this.optional_comma()
-        }
-        return fields
-    }
-
     maybe_struct() {
         const maybe_fields = () => {
             const fields = []
@@ -1723,16 +1707,14 @@ export default class Parser {
             this.next()
             while (!(this.is_eof() || this.is_close_curly())) {
                 let field_name 
-                if(this.is_id() && this.expect_colon()) { 
-                    field_name = this.current 
-                    this.next()
-                    this.next()
+                if(this.is_id()) { 
+                    field_name = this.req_id()
                 } else if(this.is_open_paren()) {
                     this.next() 
                     field_name = this.req_id()
-                    this.req_colon()
-                    this.req_close_curly() 
+                    this.req_close_paren() 
                 }   
+                this.req_colon()                
                 let n
                 let field = new Field(field_name, this.req_type())
                 if(field_name) { n = new Node("field", "def", field) } 
