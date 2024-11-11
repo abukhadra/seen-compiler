@@ -778,7 +778,7 @@ export default class Lexer {
             switch(c) { 
                 case '?': this.add_token("?") ; break
                 case '%': this.add_token('%'); break
-                case '.': this.maghrib_float() || this.ddot() || this.dot() ; break
+                case '.': this.maghrib_float() || this.dots() || this.dot() ; break
                 case ',': this.add_token(",") ; break
                 case '*': this.mul_asgmt() || this.asterisk() ; break
                 case '/': this.div_asgmt() || this.div() ; break
