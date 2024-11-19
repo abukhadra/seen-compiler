@@ -88,7 +88,7 @@ export default class Parser {
         }
     }
 
-    ignore_indentation() {
+    ignore_indentation(tk) {
         if(tk.v[0] === 'indent') {
             console.log('ignoring: ')
             pprint(tk)            

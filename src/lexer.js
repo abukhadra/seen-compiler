@@ -77,13 +77,13 @@ export default class Lexer {
         if(c === '\n') {
             this.end_loc.line += 1
             this.end_loc.column = 1
-            this.indent = []
+            this.indent = 0
         } else {
             this.end_loc.column += 1
-            if(this.indent) {
+            if(this.indent != null ) {
                 switch(this.current) {
-                    case ' ': this.indent.push(this.current) ; break
-                    case '\t': throw new Error(`replace tab at Line: ${this.end_loc.line}, Col : ${this.end_loc.column} with spaces`)
+                    case ' ': this.indent++ ; break
+                    case '\t': throw new Error(`Tabs are not allowed! replace tab at (Line: ${this.start_loc.line}, Col : ${this.start_loc.column}) with spaces`)
                     default : 
                         this.add_token(['indent', this.indent])
                         this.indent = null
