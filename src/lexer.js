@@ -83,7 +83,7 @@ export default class Lexer {
             if(this.indent) {
                 switch(this.current) {
                     case ' ': this.indent.push(this.current) ; break
-                    case '\t': throw new Error(`found tab Line: ${this.end_loc.line}, Col : ${this.end_loc.column} : indenting with tabs is not allowed`)
+                    case '\t': throw new Error(`replace tab at Line: ${this.end_loc.line}, Col : ${this.end_loc.column} with spaces`)
                     default : 
                         this.add_token(['indent', this.indent])
                         this.indent = null
