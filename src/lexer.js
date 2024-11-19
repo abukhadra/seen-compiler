@@ -51,7 +51,7 @@ export default class Lexer {
         this.current = null
         this.lookbehind = null
         this.ignore_cmts_ws = ignore_cmts_ws
-        this.indent = null
+        this.indent = []
     }
 
     run() {       
