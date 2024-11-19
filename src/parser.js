@@ -88,11 +88,20 @@ export default class Parser {
         }
     }
 
-    next(nl) {        
+    ignore_indentation() {
+        if(tk.v[0] === 'indent') {
+            console.log('ignoring: ')
+            pprint(tk)            
+            return true
+        }
+    }
+    next(nl) {           
         this.current_index += 1        
         const tk = this.tokens[this.current_index]
         this.current = tk
-        if(tk.v[0] === '\n') {
+        if( this.ignore_indentation(tk) ) { 
+            this.next()
+        } else if(tk.v[0] === '\n') {
             this.skipped_new_line = true
             this.next(true)
         } else {
