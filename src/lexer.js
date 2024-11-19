@@ -38,6 +38,7 @@ export default class Lexer {
     current
     lookbehind
     ignore_cmts_ws
+    indent
 
     init(lang, code, ignore_cmts_ws) {
         this.lang = lang
@@ -50,6 +51,7 @@ export default class Lexer {
         this.current = null
         this.lookbehind = null
         this.ignore_cmts_ws = ignore_cmts_ws
+        this.indent = null
     }
 
     run() {       
@@ -75,8 +77,16 @@ export default class Lexer {
         if(c === '\n') {
             this.end_loc.line += 1
             this.end_loc.column = 1
+            this.indent = []
         } else {
             this.end_loc.column += 1
+            switch(this.current) {
+                case ' ': this.indent.push(this.current) ; break
+                case '\t': throw new Error(`found tab Line: ${this.end_loc.line}, Col : ${this.end_loc.column} : indenting with tabs is not allowed`)
+                default : 
+                    this.add_token(['indent', this.indent])
+                    this.indent = null
+            }
         }
         return this.current
     }

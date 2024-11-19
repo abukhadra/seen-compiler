@@ -1793,7 +1793,7 @@ export default class Parser {
         if(!_stmts || _stmts.length <= 0) { return }
         const last_index = _stmts.length - 1
         const last = _stmts[last_index]
-        if(contains(["when", "while", "if", "for", "return", "let", "var", "const"], last.id) 
+        if(contains(["when", "while", "if", "for", "for_inf", "for_cond", "for_in", "return", "let", "var", "const"], last.id) 
             ||  (last.id === 'bin' && last.v.op.v === ':=') 
         ) { return }
         if(last.id === ";") { return }
