@@ -77,12 +77,11 @@ export default class Parser {
                 this.maybe_attrs()
                 this.maybe_modifier()
                 parsed = this.maybe_global_fn() 
-                            || this.maybe_struct() 
-                            || this.maybe_enum() 
+                            || this.maybe_typedef()
                             || this.maybe_trait()                            
                             || this.maybe_impl()    
 
-                            // || this.maybe_typedef()
+
             }
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
         }
@@ -1707,90 +1706,100 @@ export default class Parser {
         }
     }
 
-    maybe_struct() {
-        const maybe_fields = () => {
-            const fields = []
-            if(!this.is_open_curly()) { return }
-            this.next()
-            while (!(this.is_eof() || this.is_close_curly())) {
-                let field_name 
-                if(this.is_id()) { 
-                    field_name = this.req_id()
-                } else if(this.is_open_paren()) {
-                    this.next() 
-                    field_name = this.req_id()
-                    this.req_close_paren() 
-                }   
-                this.req_colon()                
-                let n
-                let field = new Field(field_name, this.req_type())
-                if(field_name) { n = new Node("field", "def", field) } 
-                if(!n) { 
-                    const type = this.maybe_list_type() 
-                    if(type) {                         
-                        const id = {v:['id','sn__'], loc:{"line":0,"column":0}}
-                        let field = new Field(id, type)
-                        n = new Node('field', 'def', field) 
-                    }
-                    if(n) { fields.push(n) }
-                    break 
-                }
-                fields.push(n) 
-                this.optional_comma()
-            }
-            
-            this.req_close_curly()        
-            return fields
-        }
 
-        if(!this.is_struct()) { return }
+    req_named_fields() {
+        let fields = []
+        while(!(this.is_eof() || this.is_close_paren())) {
+            let name = this.req_id()
+            this.req_colon()
+            let t = this.req_type()
+            fields.push([name, t])
+            this.optional_comma()
+        }
+        this.req_close_paren()
+        return new Node("named_fields", "def", fields)
+    }
+
+    req_unnamed_fields() {
+        let fields = []
+        while(!(this.is_eof() || this.is_close_paren())) {
+            let t = this.req_type()
+            fields.push(t)
+            this.optional_comma()
+        }
+        this.req_close_paren()
+        return new Node("fields", "def", fields)
+    }
+
+    maybe_struct_fields () {
+        if(!this.is_open_paren()) { return }
+        this.next()
+        let fields 
+        if(this.is_id()) {
+            if(this.expect_colon()) { 
+                fields = this.req_named_fields()
+            } else { 
+                fields = this.req_unnamed_fields()
+            }
+        }
+        return fields
+    }    
+
+    maybe_typedef() {
+        if(!this.is_typedef()) { return }
         this.next()
         const id = this.req_id()
+        if( this.is_colon()) { 
+            return this.req_enum(id) 
+        } else { 
+            return this.req_struct(id) 
+        }
+    }
+
+    req_struct(id) {
         this.symtab.insert_struct(id.v[1])
-        let fields  = maybe_fields() || []
+        let fields  = this.maybe_struct_fields() || []
         if(!fields) { return }        
         const _t = new Struct(id, fields)
         const n = new Node("struct", "def", _t)
         this.ast.push(n)
-
         return true
     }
 
-    maybe_enum() {
+
+    maybe_variants() {
         const maybe_inner_type = () => {
             if(!this.is_open_paren()) { return }    
             this.next()        
             let _t = this.maybe_type()
             this.req_close_paren()        
             return _t
-        }
+        }        
 
-        const maybe_variants = () => {
-            const variants = []
-            if(!this.is_open_curly()) { return }
-            this.next()
-            while (!(this.is_eof() || this.is_close_curly())) {
-                let variant_name 
-                if(this.is_id()) { 
-                    variant_name = this.current 
-                    this.next()
-                }
-                let variant
-                if(variant_name) { variant = new Node("variant", "def", [variant_name, maybe_inner_type()]) } 
-                if(!variant) { break  }
-                variants.push(variant) 
-                this.optional_comma()
-            }
-            
-            this.req_close_curly()        
-            return variants
-        }
-
-        if(!this.is_enum()) { return }
+        const variants = []
+        if(!this.is_open_curly()) { return }
         this.next()
-        const id = this.req_id()
+        while (!(this.is_eof() || this.is_close_curly())) {
+            let variant_name 
+            if(this.is_id()) { 
+                variant_name = this.current 
+                this.next()
+            }
+            let variant
+            if(variant_name) { variant = new Node("variant", "def", [variant_name, maybe_inner_type()]) } 
+            if(!variant) { break  }
+            variants.push(variant) 
+            this.optional_comma()
+        }
+        
+        this.req_close_curly()        
+        return variants
+    }
+
+
+    req_enum(id) {
         this.symtab.insert_enum(id.v[1])
-        let variants  = maybe_variants() || []
+        let variants  = this.maybe_variants() || []
         if(!variants) { return }        
         const _t = new Enum(id, variants)
         const n = new Node("enum", "def", _t)
