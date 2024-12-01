@@ -181,7 +181,7 @@ export default class Parser {
     is_do() { return this.is_keyword("do") }
     is_end() { return this.is_keyword("end") }
     is_fn() { return this.is_keyword("fn") }
-    is_alias() { return this.is_keyword("alias") }
+    // is_alias() { return this.is_keyword("alias") }
     is_typedef() { return this.is_keyword("type") }
     is_struct() { return this.is_keyword("struct") }
     is_enum() { return this.is_keyword("enum") }
@@ -1717,7 +1717,7 @@ export default class Parser {
             this.optional_comma()
         }
         this.req_close_paren()
-        return new Node("named_fields", "def", fields)
+        return fields
     }
 
     req_unnamed_fields() {
@@ -1728,7 +1728,7 @@ export default class Parser {
             this.optional_comma()
         }
         this.req_close_paren()
-        return new Node("fields", "def", fields)
+        return  fields
     }
 
     maybe_struct_fields () {
@@ -1751,15 +1751,20 @@ export default class Parser {
         const id = this.req_id()
         if( this.is_colon()) { 
             return this.req_enum(id) 
+        } if( this.is_asgmt()) { 
+            return this.req_alias()
         } else { 
             return this.req_struct(id) 
         }
     }
 
+    req_alias() {
+        panic('type alias not implemented')
+    }
+
     req_struct(id) {
         this.symtab.insert_struct(id.v[1])
-        let fields  = this.maybe_struct_fields() || []
-        if(!fields) { return }        
+        let fields  = this.maybe_struct_fields() || []       
         const _t = new Struct(id, fields)
         const n = new Node("struct", "def", _t)
         this.ast.push(n)
