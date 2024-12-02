@@ -21,8 +21,7 @@ import {
     Enum,
     StructLEl,
     Asgmt,
-    ForInf,
-    ForCond,
+    While,
     ForIn,
     When,
     WhenArm,
@@ -57,6 +56,7 @@ export default class Parser {
     symtab
     attrs
     errs
+    current_indent
 
     init(tokens) {
         this.tokens = tokens
@@ -67,6 +67,7 @@ export default class Parser {
         this.symtab = new Symtab()
         this.attrs = []
         this.errs = []
+        this.current_indent = 0
     }
 
     run() {
@@ -91,6 +92,12 @@ export default class Parser {
         }
     }
 
+    get_indent() {
+        let tk = this.tokens[this.current_index]
+        if(tk.v[0] === 'indent') { return tk.v[1] }
+        else{ this.tk.loc }
+    }
+
     ignore_indentation(tk) {
         if(tk.v[0] === 'indent') {
             console.log('ignoring: ')
@@ -98,6 +105,7 @@ export default class Parser {
             return true
         }
     }
+    
     next(nl) {           
         this.current_index += 1        
         const tk = this.tokens[this.current_index]
@@ -689,16 +697,29 @@ export default class Parser {
         return n
     }
 
-    req_body() {
-        this.req_open_curly()                
+    req_body() {              
         const stmts = this.stmts()
-        this.req_close_curly()
         const n = new Node("body", "body", stmts)
         return n
     }
 
+    req_body_no_indent() {
+        this.req_open_curly()                
+        const stmts = this.stmts_no_indent()
+        this.req_close_curly()
+        const n = new Node("body", "body", stmts)
+        return n
+    }    
+
     req_body_ret() {
         const body = this.req_body()
+        this.implicit_return(body.v)
+        return body
+    }
+
+
+    req_body_ret_no_indent() {
+        const body = this.req_body_no_indent()
         this.implicit_return(body.v)
         return body
     }
@@ -711,6 +732,7 @@ export default class Parser {
                     || this.maybe_expr() 
                     || this.maybe_semicolon()        
                     || this.maybe_for()
+                    || this.maybe_while()
     }
 
     req_stmts() {
@@ -726,13 +748,28 @@ export default class Parser {
     stmts() {
         let _stmts = []
         let stmt
+        if( this.get_indent() <= this.current_indent + 1  ) { return []}
+        this.current_indent = this.get_indent()
+        while(true) {
+            if(this.get_indent() < this.current_indent ) { break }
+            stmt = this.maybe_stmt()
+            if(stmt) { _stmts.push(stmt) }
+            if(!stmt) { panic('expecting a statement') }
+        }
+        this.current_indent = this.get_indent() 
+        return _stmts
+    }
+
+    stmts_no_indent() {
+        let _stmts = []
+        let stmt
         while(true) {
             stmt = this.maybe_stmt()
             if(stmt) { _stmts.push(stmt) }
             if(!stmt) { break }
         }
         return _stmts
-    }
+    }    
 
     maybe_ret() {
         if(!this.is_ret()) { return }
@@ -748,7 +785,6 @@ export default class Parser {
         const n = new Node("break", "stmt", null)
         return n
     }
-
 
     maybe_global_val() {
         let c = this.maybe_val()
@@ -1128,27 +1164,16 @@ export default class Parser {
         if(fn) { return fn } else { panic("expecting an anonymous function : " + to_str(this.current)) }        
     }
     maybe_anonymous_fn() { 
-        if(!this.is_tilde()) { return }
+        if(!this.is_open_curly()) { return }
         this.next()
-        const params = []
-
-        let open_paren = this.maybe_open_paren()
-        this.maybe_comma()
-        while(true) {
-            if(this.is_close_paren() || this.is_eof()) { break }
-            if(params.length > 0) { this.req_comma() }
-            const _pat = this.req_pat()
-            const t = this.maybe_tannotation()
-            const param = new FnParam(_pat, t)
-            const n = new Node("param", "pat", param)
-            if(_pat.id !== "id") {  panic("only parameters with id patterns are currently supported")  }
-            params.push(n)
-        }
-        this.maybe_comma()
-        if(open_paren) { this.req_close_paren() }
-        const ret_types = this.maybe_fn_ret_types()
-        const body = this.req_body_ret()
-        const _afn = new Fn("", params, ret_types, body)
+        let typesig = this.maybe_typesig() 
+        let params = this.req_params()
+        if(params.length > 0) { this.req_thin_arrow()} 
+        const stmts = this.stmts_no_indent()
+        this.req_close_curly()
+        const body = new Node("body", "body", stmts)
+        this.implicit_return(body.v)
+        const _afn = new Fn(null, typesig, null, "", params, body)
         const n = new Node("afn", "expr", _afn)
         return n        
     }
@@ -1385,40 +1410,82 @@ export default class Parser {
 
     maybe_when_arm() {
         const pats = []
+        this.current_indent = this.get_indent() + 1 
+
+        while(!this.is_thin_arrow() && !this.get_indent() < this.current_indent) {
+            pats.push(this.req_pat())
+            if(this.is_bar()) { this.next() } else { break }
+        }
+
+        this.req_thin_arrow()
+
+        const expr = this.stmts()
+        const arm = new WhenArm(pats, expr)
+        const n = new Node("arm", "", arm)
+        return n
+    }
+
+    maybe_when_arm_no_indent() {
+        const pats = []
         while(!this.is_thin_arrow()) {
             pats.push(this.req_pat())
             if(this.is_bar()) { this.next() } else { break }
         }
 
         this.req_thin_arrow()
-        const expr = this.req_expr()
+        const expr = this.stmts_no_indent()
         const arm = new WhenArm(pats, expr)
         const n = new Node("arm", "", arm)
-        return n
+        return n        
     }
 
     maybe_when() {
+        const no_indent = () => {
+            let arms = []
+            this.req_open_curly()
+            this.maybe_comma()
+            while(true) {
+                if(this.is_eof() || this.is_close_curly()) {
+                    break
+                }
+                if(arms.length > 0) {
+                    this.optional_comma()
+                    if(this.is_eof() || this.is_close_curly()) { break }
+                }
+                const arm = this.maybe_when_arm()
+                if(arm) { arms.push(arm) } else { break }
+            }
+            this.maybe_comma()
+            this.req_close_curly()            
+            return arms 
+        }
+
+        const with_indent = () => {
+            let arms = []
+            this.current_indent = this.current
+            this.maybe_comma()
+            while(true) {
+                if(this.is_eof() || this.get_indent() < this.current_indent ) {
+                    break
+                }
+                if(arms.length > 0) {
+                    this.optional_comma()
+                    if(this.is_eof() || this.get_indent() < this.current_indent) { break }
+                }
+                const arm = with_indent()
+                if(arm) { arms.push(arm) } else { break }
+            }
+            this.maybe_comma()
+            this.current_indent = this.get_indent() 
+            return arms             
+        }
+
         if(!this.is_when()) { return }
         this.next()
-        this.req_open_paren()
         const expr = this.maybe_expr()
-        this.req_close_paren()
-        this.req_open_curly()
-        const arms = []
-        this.maybe_comma()
-        while(true) {
-            if(this.is_eof() || this.is_close_curly()) {
-                break
-            }
-            if(arms.length > 0) {
-                this.optional_comma()
-                if(this.is_eof() || this.is_close_curly()) { break }
-            }
-            const arm = this.maybe_when_arm()
-            if(arm) { arms.push(arm) } else { break }
-        }
-        this.maybe_comma()
-        this.req_close_curly()
+        let arms = no_indent() 
+        if(!arms) { arms = with_indent() }
+        if(!arms) { panic("expecting arms!")}
         const _when = new When(expr, arms)
         const n = new Node("when", "expr", _when)
         return n
@@ -1427,42 +1494,34 @@ export default class Parser {
     maybe_for() { 
         if(!this.is_for()) { return }
         this.next()
-        let stmt =  this.maybe_for_inf()  
-        if(!stmt) { stmt = this.maybe_for_cond() }
-        if(!stmt) { stmt = this.req_for_in()  }
-        return stmt
-    }
-
-    maybe_for_inf() { 
-        if(!this.is_open_curly()) { return }
-        let body = this.req_body()
-        let stmt = new ForInf(body)
-        let n = new Node('for_inf', 'stmt', stmt)
-        return n
-     }
-    
-    maybe_for_cond() { 
-        const init = this.maybe_let()
-        let expr
-        if(init) { expr = this.req_expr() } else { expr = this.maybe_expr() }
-        if(!expr) { return }
-
-        const body = this.req_body() 
-        let stmt = new ForCond(expr, body)
-        let n = new Node('for_cond', 'stmt', stmt)
-        return n
-    }
-
-    req_for_in() { 
         const pat = this.req_pat() 
         this.req_in()
         const expr = this.req_expr() 
-        let body = this.req_body()
+        let body 
+        if(this.is_colon()) { 
+            this.next() 
+            this.req_body()
+        } else {
+            body = this.req_body_no_indent()
+        }
+
         let stmt = new ForIn(pat, expr, body) 
         let n = new Node('for_in', 'stmt', stmt)
         return n
-     }
+    }
 
+    maybe_while() {
+        if(!this.is_while()) { return }
+        this.next()
+        let expr
+        let body 
+        if( !this.is_colon() || !this.is_open_curly() ) { expr = this.req_expr()  }
+        if(this.is_colon()) { body = this.req_body() }
+        else { body = this.req_body_no_indent() }
+        let stmt = new While(expr, body)
+        let n = new Node('while', 'stmt', stmt)        
+        return stmt
+    }
 
     req_anonymous_method() {
         const maybe_field_asgmt = () => {
@@ -1474,14 +1533,34 @@ export default class Parser {
             return bin 
         }
 
-        if( this.is_open_curly() )  { this.next() } else { panic("expecting ',' after : " + to_str(this.current)) }    
-        let stmts = []
-        while (!this.is_eof() || !this.is_close_curly() ) {
-            let stmt = maybe_field_asgmt() || this.maybe_stmt()
-            if(stmt) { stmts.push(stmt)} else { panic('expected a statement : ' + to_str(this.current))}
+        const no_indent = () => {
+            if( this.is_open_curly() )  { this.next() } else { return }    
+            let stmts = []
+            while (!this.is_eof() || !this.is_close_curly() ) {
+                let stmt = maybe_field_asgmt() || this.maybe_stmt()
+                if(stmt) { stmts.push(stmt)} else { panic('expected a statement : ' + to_str(this.current))}
+            }
+            let amethod = new AnonymousMethod(stmts)
+            this.req_close_curly()    
+            return amethod
+        } 
+
+        const with_indent = ()  => {
+            this.current_indent = this.get_indent()
+            
+            let stmts = []
+            while (!this.is_eof() || ! this.get_indent() < this.current_indent ) {
+                let stmt = maybe_field_asgmt() || this.maybe_stmt()
+                if(stmt) { stmts.push(stmt)} else { panic('expected a statement : ' + to_str(this.current))}
+            }
+            let amethod = new AnonymousMethod(stmts)
+            this.current_indent = this.get_indent() 
+            return amethod
         }
-        let amethod = new AnonymousMethod(stmts)
-        this.req_close_curly()
+
+        let amethod = no_indent() 
+        if(!amethod) { amethod = with_indent() }
+
         let n = new Node('amethod', 'expr', amethod)
         return n
     }
@@ -1703,8 +1782,14 @@ export default class Parser {
     req_fn(attrs, typesig, modifier) {
         const name = this.req_id() 
         const params = this.req_params() 
-        this.req_asgmt() 
-        const body = this.req_body_ret()
+        let body 
+        if( this.is_open_curly()) { 
+            body = this.req_body_ret_no_indent()
+        }
+        else { 
+            this.req_asgmt() 
+            body = this.req_body_ret()
+        }
         const _fn = new Fn( attrs, typesig, modifier , name, params ,body)
         const n = new Node("fn", "def", _fn)
         return n
@@ -1824,7 +1909,7 @@ export default class Parser {
         if(!_stmts || _stmts.length <= 0) { return }
         const last_index = _stmts.length - 1
         const last = _stmts[last_index]
-        if(contains(["when", "while", "if", "for", "for_inf", "for_cond", "for_in", "return", "let", "var", "const"], last.id) 
+        if(contains(["when", "while", "if", "for", "while", "return", "let"], last.id) 
             ||  (last.id === 'bin' && last.v.op.v === ':=') 
         ) { return }
         if(last.id === ";") { return }

@@ -65,8 +65,7 @@ class FieldAsgmt    { id; expr                         ;  constructor(id,expr)  
 class AnonymousMethod{ id; expr                        ;  constructor(stmts)           { this.stmts = stmts }                                  }
 class StructLEl     { k; v                             ;  constructor(k,v)             { this.k = k; this.v = v }                              }
 class Asgmt         { lhs; t; rhs                      ;  constructor(lhs, t ,rhs)     { this.lhs = lhs; this.t = t ; this.rhs = rhs }         }
-class ForInf        { body                             ;  constructor(body)            { this.body = body }                                    }
-class ForCond       { expr; body                       ;  constructor(expr,body)       { this.expr = expr; this.body = body }                  }
+class While         { expr; body                       ;  constructor(expr,body)       { this.expr = expr; this.body = body }                  }
 class ForIn         { pat; expr; body                  ;  constructor(pat, expr, body) { this.pat = pat; this.expr = expr; this.body = body }  }                  
 class When          { expr; arms                       ;  constructor(expr,arms)       { this.expr = expr; this.arms = arms }                  }
 class WhenArm       { pats; expr                       ;  constructor(pats,expr)       { this.pats = pats; this.expr = expr }                  }
@@ -96,8 +95,7 @@ export {
     Enum,
     StructLEl,
     Asgmt,
-    ForInf,
-    ForCond,
+    While,
     ForIn,
     When,
     WhenArm,
