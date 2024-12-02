@@ -7,6 +7,8 @@ class TypeDef       { name; fields ; children           ;  constructor(name,fiel
                                                                 this.children = children 
                                                             }                                  
 }
+class Value         { name; t ; body                    ; cosntructor(name,t,body) { this.name = name; this.t = t; this.body = body }          }
+class Alias         { name; t                           ; constructor(name,t) { this.name = name; this.t = t }                                 }
 
 class Struct       { name; fields ;                     ;  constructor(name,fields)    { 
                                                             this.name = name 
@@ -26,16 +28,24 @@ class EnumPat       { name; variant                     ;  constructor(name, var
 class Pair          { k; v                              ;  constructor(k,v)            { this.k = k ; this.v = v }                             }
 class Uni           { opr; op                           ;  constructor(opr,op)         { this.opr = opr ; this.op = op }                       }
 class Bin           { lopr; op; ropr                    ;  constructor(lopr,op,ropr)   { this.lopr = lopr ; this.op = op ; this.ropr = ropr }  }
-class Method        { t; fn                             ;  constructor(t, fn)          { this.t = t; this.fn = fn }                            }
+class Method        { trait; instance_type; fn          ;  constructor(trait, instance_type,fn) { 
+                                                                this.trait = trait;
+                                                                this.instance_type = instance_type;
+                                                                this.fn = fn
+                                                            }                            
+}
 class Trait         { id; fns; sigs                     ;  constructor(id, fns, sigs)  { this.id = id; this.fns = fns; this.sigs = sigs }      }
 class TraitImpl     { id; t; fns                        ;  constructor(id, t, fns)     { this.id = id; this.t = t; this.fns = fns }            }
-class Fn            { name; params; ret_types; body     ;  constructor(name,params,ret_types,body)   { 
+class Fn            { attrs; typesig; modifier; name; params ;body  ;  constructor(attrs, typesig, modifier , name, params ,body)   {     
+                                                                this.attrs = attrs ;     
+                                                                this.typesig = typesig;
+                                                                this.modifier = modifier;
                                                                 this.name = name ; 
                                                                 this.params = params ; 
-                                                                this.ret_types = ret_types ; 
                                                                 this.body = body
                                                             }  
 }
+class TypeSig       { params; ret_type                  ; constructor(params,ret_type) { this.params = params ; this.ret_type = ret_type}     }
 class FnSig         { name; params; ret_types           ;  constructor(name, params, ret_types) { 
                                                                 this.name = name; 
                                                                 this.params = params; 
@@ -43,7 +53,7 @@ class FnSig         { name; params; ret_types           ;  constructor(name, par
                                                           }
 }
 class FnParam        { _pat; t                          ;   constructor(_pat,t)         { this._pat = _pat; this.t = t }                        }
-class TrailingClosure{ label; fn                        ;   constructor(label,fn)        { this.label = label; this.fn = fn }                      }
+class TrailingClosure{ label; fn                        ;   constructor(label,fn)        { this.label = label; this.fn = fn }                   }
 class FnCall         { id; args; trailing               ;   constructor(id, args, trailing)     { 
                                                                 this.id = id; 
                                                                 this.args = args; 
@@ -71,6 +81,7 @@ export {
     Trait,
     TraitImpl,
     Fn,
+    TypeSig,
     FnSig,
     FnParam,
     TrailingClosure,
@@ -79,6 +90,8 @@ export {
     FieldAsgmt,
     AnonymousMethod,
     TypeDef,
+    Value,
+    Alias,
     Struct,
     Enum,
     StructLEl,

@@ -8,6 +8,7 @@ import {
     Method,
     Trait,
     TraitImpl,
+    TypeSig,
     Fn,
     FnSig,
     FnParam,
@@ -26,6 +27,8 @@ import {
     When,
     WhenArm,
     Type,
+    Alias,
+    Value,
     TypeTempl,
     EnumPat,
     Node
@@ -72,16 +75,17 @@ export default class Parser {
         while(!this.is_eof()) { if(! this.maybe_use() ) {break } }
 
         while(!this.is_eof()) {
-            let parsed = this.maybe_global_const()
+            let parsed = this.maybe_global_val()
             if(!parsed) {
-                this.maybe_attrs()
-                this.maybe_modifier()
-                parsed = this.maybe_global_fn() 
-                            || this.maybe_typedef()
+                const attrs = this.maybe_attrs()
+                const typesig = this.maybe_typesig()
+                const modifier = this.maybe_modifier()
+                parsed =    this.maybe_global_method(attrs, modifier, typesig)
+                            || this.maybe_global_fn(attrs, typesig, modifier) 
+            }
+            if(!parsed) {
+                parsed =     this.maybe_typedef()
                             || this.maybe_trait()                            
-                            || this.maybe_impl()    
-
-
             }
             if(!parsed) { panic("invalid syntax: " + to_str(this.current)) }
         }
@@ -137,12 +141,13 @@ export default class Parser {
         const i = this.current_index + 1
         return this.tokens[i]
     }
-
+    is_indent() { return this.current.v === "indent"}
     is_eof() { return this.current.v === "$eof" }
     is_newline() { return this.skipped_new_line }
     is_asterisk() { return this.current.v === "*" }
     is_at() { return this.current.v === "@" }
     is_asgmt() { return this.current.v === "=" }
+    is_val_asgmt() { return this.current.v === ":=" }
     is_hash() { return this.current.v === "--" }
     is_percent() { return this.current.v === "%" }
     is_dpercent() { return this.current.v === "%%" }
@@ -175,7 +180,6 @@ export default class Parser {
     is_use() { return this.is_keyword("use") }
     is_let() { return this.is_keyword("let") }
     is_if_let() { return this.is_keyword("if_let") }
-    is_const()  { return this.is_keyword("const") }
     is_var()    { return this.is_keyword("var") }
     is_then()   { return this.is_keyword("then") }
     is_do() { return this.is_keyword("do") }
@@ -236,6 +240,7 @@ export default class Parser {
         if(!is_list(this.current.v)) { return }
         return this.is_fn() && this.lookahead().v !== "^"
     }
+    expect_val_asgmt() { return this.lookahead().v === ":=" }
     expect_colon() { return this.lookahead().v === ":" }
     expect_comma() { return this.lookahead().v === "," }
     expect_plus() { return this.lookahead().v === "+" }
@@ -261,6 +266,14 @@ export default class Parser {
             return true
         }
     }
+
+    maybe_val_asgmt() {
+        if(this.is_val_asgmt()) {
+            this.next()
+            return true
+        }
+    }    
+
     maybe_comma() {
         if(this.is_comma()) {
             this.next()
@@ -288,6 +301,14 @@ export default class Parser {
             return true
         }
     }
+
+    maybe_thin_arrow() { 
+        if(this.is_thin_arrow()) { 
+            this.next()
+            return true
+        }
+    }
+
     maybe_open_curly() {
         if(this.is_open_curly()) {
             this.next()
@@ -317,12 +338,27 @@ export default class Parser {
     maybe_modifier() {
         if(!this.is_modifier()) { return }
         this.next()
-        const n = new Node("modif", "", this.current)
+        const modifier = this.current
         this.next()
         this.req_close_paren()
-        this.ast.push(n)
-        return true
+        return modifier
+
     }
+
+    maybe_typesig() {
+        if(!this.is_dcolon()) { return }
+        this.next()
+        do { 
+            let t = this.maybe_type() 
+            if(!t) { break }
+            this.optional_comma() 
+            if(maybe_thin_arrow()) { 
+                this.
+                break;
+            }
+        } while(true)
+    }
+
     maybe_attrs() {
         while(this.is_hash()) {
             this.skip()
@@ -337,7 +373,7 @@ export default class Parser {
                 this.skip()
             }
         }
-        if(this.attrs.length > 0) { return true }
+        return this.attrs
     }
     maybe_pat() {  if(this.is_pat()) { return this.prim_pat() } }
 
@@ -355,6 +391,14 @@ export default class Parser {
         }
         return true
     }
+
+    req_val_asgmt() {
+        if(!this.maybe_val()) {
+            panic("expecting ':=' : " + to_str(this.current))
+        }
+        return true
+    }
+
     req_comma() {
         if(this.is_comma()) {
             this.next()
@@ -662,7 +706,7 @@ export default class Parser {
     maybe_stmt() {
         if(this.is_eof() || this.is_modifier()) { return } 
         return   this.maybe_break() 
-                    || this.maybe_const() 
+                    || this.maybe_val() 
                     || this.maybe_let() 
                     || this.maybe_expr() 
                     || this.maybe_semicolon()        
@@ -706,8 +750,8 @@ export default class Parser {
     }
 
 
-    maybe_global_const() {
-        let c = this.maybe_const()
+    maybe_global_val() {
+        let c = this.maybe_val()
         if(c) {
             this.ast.push(c) 
             return true 
@@ -715,8 +759,8 @@ export default class Parser {
          return false
     }
 
-    maybe_global_fn() {
-        let fn = this.maybe_fn()
+    maybe_global_fn(attrs, typesig, modifier) {
+        let fn = this.maybe_fn(attrs, typesig, modifier)
         if(fn) {
             this.ast.push(fn) 
             return true 
@@ -725,74 +769,21 @@ export default class Parser {
     }    
 
     maybe_trait() { 
-        if(!this.is_trait()) { return }
-        this.next()
-        let id = this.req_id()
-        let sigs = []
-        let fns = []
-        while(!this.is_eof() || !this.is_close_curly()) { 
-            // const fn = this.maybe_fn()
-            const fn_or_sig = this.maybe_fn_or_sig()
-            if(fn_or_sig.id === 'fn_sig') { sig.push(fn_or_sig)}
-            else if(fn_or_sig.id === 'fn') { fns.push(fn_or_sig)}
-            else { panic('expecting function or signature.')}
-        }
-        this.req_close_curly()
-        const trait = new Trait(id, fns, sigs )
-        const n = new Node("trait", "def", trait)
-        this.ast.push(n)
+        panic('traits not implemented!')
+        // const trait = new Trait(id, fns, sigs )
+        // const n = new Node("trait", "def", trait)
+        // this.ast.push(n)
     }
 
-    maybe_impl() {
-        if(!this.is_at()) { return }
-        this.next()
-        let t = this.req_type() 
-        return this.is_id() ? this.req_trait_impl(t) : this.req_methods(t)
-    }
-
-    req_methods(t) {
-        if( this.maybe_open_curly() ){
-            while(!this.is_eof() || !this.is_close_curly()) { 
-                const fn = this.maybe_fn()
-                const method = new Method(t, fn)
-                const n = new Node("method", "def", method)
-                this.ast.push(n)
-            }
-            this.req_close_curly()
-        } else { 
-            const method = new Method( t , this.req_fn() )
-            this.ast.push( new Node( "method" , "def", method) )
-        }
-        return true
-    }
-
-    req_trait_impl(t) {        
-        if( this.maybe_open_curly() ){
-            let methods = []
-            while(!this.is_eof() || !this.is_close_curly()) { 
-                const fn = this.maybe_fn()
-                const method = new Method(type, fn)
-                methods.push( method )
-            }
-            const n = new Node("method", "def", methods)
-            this.ast.push(n)
-            this.req_close_curly()
-        } else { 
-            const method = new Method( t , this.req_fn())
-            this.ast.push( new Node( "trait_impl" , "def", method) )
-        }
-        return true
-    }    
-
-    maybe_const() {
-        if(!this.is_const()) { return }
-        this.next()
-        const _pat = this.req_pat()
+    maybe_val() {
+        if(this.is_indent()) { return }
+        if(!( this.is_id() && this.expect_val_asgmt() || this.expect_colon() )) { return }
+        const id = this.req_id()
         const t = this.maybe_tannotation()
-        this.req_asgmt()
-        const rhs = this.req_expr()
-        const asgmt = new Asgmt(_pat, t, rhs)
-        const n = new Node("const", "stmt", asgmt)
+        if(t) { this.req_asgmt() } else { this.req_val_asgmt() }
+        const body = this.req_body_ret()
+        const val = new Val(id, t, body)
+        const n = new Node("val", "def", val)
         return n
     }
     
@@ -1526,14 +1517,33 @@ export default class Parser {
         return prim
     }
 
-    maybe_fn() {
-        if(!this.is_fn()) { return }
-        const _fn = this.req_fn()
+    req_context() {
+        this.next() // skip ( 
+        let id = this.req_id(); 
+        let id2 = this.maybe_id();
+        this.req_close_paren() 
+        return [id,id2]
+    }
+
+    maybe_global_method(attrs, modifier, typesig) {
+        if( this.is_indent() && !this.is_open_paren() ) { return }
+        let context = this.req_context
+        let _fn = this.req_fn(attrs, modifier, typesig)
+        let trait = context[1]? context[0] : null
+        let instance_type = context[1]? context[1] : context[1]
+        let method = new Method(trait, instance_type, _fn.v)
+        const n = new Node("method", "def", method)
+        return n
+    }
+
+    maybe_fn(attrs, typesig, modifier) {
+        if(this.is_indent() && !this.is_id() ) { return }
+        const _fn = this.req_fn(attrs, typesig, modifier)
         if(_fn && contains(["main", "بدء"], _fn.v.name.v[1])) {
-            const n = new Node("main", "fn", _fn.v)
+            const n = new Node("main", "def", _fn.v)
             return n
         } else {
-            const n = new Node("fn", "fn", _fn.v)
+            const n = new Node("fn", "def", _fn.v)
             return n
         }
     }
@@ -1598,9 +1608,18 @@ export default class Parser {
         }        
     }
 
+    maybe_infer_type() {
+        if(this.is_underscore()) { 
+            this.next() 
+            const _type = new Type('_')
+            return new Node('_', 't', _type)
+        }
+    }
+
     maybe_type() {
         return this.maybe_simple_type()
                 || this.maybe_list_type()
+                || this.maybe_infer_type()
                 // || this.maybe_dynamic_type()
     }
 
@@ -1671,41 +1690,25 @@ export default class Parser {
         return ret_types
     }
 
-    req_fn() {
-        let sig = this.maybe_fn_sig()
-        if(sig) { sig =  sig.v } else { return }
+    req_params() {
+        let params = []
+        while(true) {
+            let p = this.maybe_pat() 
+            if(!p) { break}
+            params.push(p)
+            this.optional_comma()
+        }
+        return params
+    }
+    req_fn(attrs, typesig, modifier) {
+        const name = this.req_id() 
+        const params = this.req_params() 
+        this.req_asgmt() 
         const body = this.req_body_ret()
-        const _fn = new Fn( sig.name, sig.params , sig.ret_types, body)
+        const _fn = new Fn( attrs, typesig, modifier , name, params ,body)
         const n = new Node("fn", "def", _fn)
         return n
     }
-
-    maybe_fn_sig() { 
-        if(!this.is_fn()) { return }
-        this.next()
-        const name = this.req_id()
-        this.symtab.insert_fn(name.v[1]); // FIXME: hack, remove when name resolution is fixed.
-        const params = this.maybe_fn_params()
-        const ret_types = this.maybe_fn_ret_types()
-        const fn_sig = new FnSig(name, params, ret_types)
-        const n = new Node("fn_sig", "def", fn_sig)
-        return n
-    }
-
-    maybe_fn_or_sig() {
-        let sig = this.maybe_fn_sig()
-        if(sig) {
-            if(this.is_open_curly() ) {
-                const body = this.req_body_ret()
-                const _fn = new Fn( sig.name, sig.params , sig.ret_types, body)
-                const n = new Node("fn", "def", _fn)
-                return n
-            } else {
-                return sig
-            }
-        }
-    }
-
 
     req_named_fields() {
         let fields = []
@@ -1758,8 +1761,12 @@ export default class Parser {
         }
     }
 
-    req_alias() {
-        panic('type alias not implemented')
+    req_alias(id) {
+        this.next() // skip = 
+        const alias = new Alias(id, this.req_type())
+        const n = new Node("alias", "def", alias)
+        this.ast.push(n)
+        return true
     }
 
     req_struct(id) {
@@ -1803,6 +1810,7 @@ export default class Parser {
 
 
     req_enum(id) {
+        this.next() // skip colon
         this.symtab.insert_enum(id.v[1])
         let variants  = this.maybe_variants() || []
         if(!variants) { return }        
