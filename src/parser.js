@@ -1713,7 +1713,7 @@ export default class Parser {
             let name = this.req_id()
             this.req_colon()
             let t = this.req_type()
-            fields.push([name, t])
+            fields.push(new Field(name, t))
             this.optional_comma()
         }
         this.req_close_paren()
@@ -1724,7 +1724,7 @@ export default class Parser {
         let fields = []
         while(!(this.is_eof() || this.is_close_paren())) {
             let t = this.req_type()
-            fields.push(t)
+            fields.push(new Field(null, t))
             this.optional_comma()
         }
         this.req_close_paren()

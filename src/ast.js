@@ -50,7 +50,7 @@ class FnCall         { id; args; trailing               ;   constructor(id, args
                                                                 this.trailing = trailing 
                                                             }
 }
-class Field         {id; t; implicit                   ;  constructor(id,t,implicit)   { this.id = id; this.t = t; this.implicit = implicit }  }
+class Field         {id; t                             ;  constructor(id,t)            { this.id = id; this.t = t; }                           }
 class FieldAsgmt    { id; expr                         ;  constructor(id,expr)         { this.id = id; this.expr = expr }                      }
 class AnonymousMethod{ id; expr                        ;  constructor(stmts)           { this.stmts = stmts }                                  }
 class StructLEl     { k; v                             ;  constructor(k,v)             { this.k = k; this.v = v }                              }
