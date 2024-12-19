@@ -1,4 +1,4 @@
-import {HtmlCssJSGen} from '../lib/sgen-html-css-js.js'
+import { HtmlCssJSGen } from '../lib/sgen-html-css-js.js'
 import { SUPPORTED_GEN } from './constants.js'
 import {
     to_lowercase,

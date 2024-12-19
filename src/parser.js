@@ -95,7 +95,7 @@ export default class Parser {
     get_indent() {
         let tk = this.tokens[this.current_index]
         if(tk.v[0] === 'indent') { return tk.v[1] }
-        else{ this.tk.loc }
+        else { return tk.loc.column - 1 }
     }
 
     ignore_indentation(tk) {
@@ -725,9 +725,9 @@ export default class Parser {
     }
 
     maybe_stmt() {
-        if(this.is_eof() || this.is_modifier()) { return } 
+        if(this.is_eof()) { return } 
         return   this.maybe_break() 
-                    || this.maybe_val() 
+                    // || this.maybe_val() 
                     || this.maybe_let() 
                     || this.maybe_expr() 
                     || this.maybe_semicolon()        
@@ -748,22 +748,26 @@ export default class Parser {
     stmts() {
         let _stmts = []
         let stmt
+        console.log('INDENTS: ')
+        console.log(this.get_indent())
+        console.log(this.current_indent)
         if( this.get_indent() <= this.current_indent + 1  ) { return []}
         this.current_indent = this.get_indent()
-        while(true) {
+        while(!this.is_eof()) {
             if(this.get_indent() < this.current_indent ) { break }
             stmt = this.maybe_stmt()
             if(stmt) { _stmts.push(stmt) }
             if(!stmt) { panic('expecting a statement') }
         }
         this.current_indent = this.get_indent() 
+        console.log(`length: ${_stmts.length}`)
         return _stmts
     }
 
     stmts_no_indent() {
         let _stmts = []
         let stmt
-        while(true) {
+        while(!this.is_eof()) {
             stmt = this.maybe_stmt()
             if(stmt) { _stmts.push(stmt) }
             if(!stmt) { break }
@@ -1605,8 +1609,9 @@ export default class Parser {
     }
 
     maybe_global_method(attrs, modifier, typesig) {
-        if( this.is_indent() && !this.is_open_paren() ) { return }
-        let context = this.req_context
+        pprint(this.current)
+        if( this.get_indent() > 0 || !this.is_open_paren() ) { return }
+        let context = this.req_context()
         let _fn = this.req_fn(attrs, modifier, typesig)
         let trait = context[1]? context[0] : null
         let instance_type = context[1]? context[1] : context[1]
@@ -1616,7 +1621,10 @@ export default class Parser {
     }
 
     maybe_fn(attrs, typesig, modifier) {
-        if(this.is_indent() && !this.is_id() ) { return }
+        // console.log(this.is_id())
+        pprint(this.current)
+        if(this.get_indent() > 0 || !this.is_id() ) { return }
+        console.log('its a func!')
         const _fn = this.req_fn(attrs, typesig, modifier)
         if(_fn && contains(["main", "بدء"], _fn.v.name.v[1])) {
             const n = new Node("main", "def", _fn.v)
@@ -1792,6 +1800,7 @@ export default class Parser {
         }
         const _fn = new Fn( attrs, typesig, modifier , name, params ,body)
         const n = new Node("fn", "def", _fn)
+        console.log("END OF FUNC!")
         return n
     }
 
